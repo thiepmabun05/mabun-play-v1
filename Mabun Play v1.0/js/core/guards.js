@@ -1,3 +1,4 @@
+// js/core/guards.js
 const PUBLIC_PAGES = [
   'index.html',
   'login.html',
@@ -27,16 +28,19 @@ export async function setupAuthGuard() {
 
   const currentPath = window.location.pathname.split('/').pop() || 'index.html';
 
-  // If user is logged in and on a public page (except index, privacy, terms, support), redirect to dashboard
-  if (user && PUBLIC_PAGES.includes(currentPath) && !['index.html', 'privacy.html', 'terms.html', 'support.html'].includes(currentPath)) {
-    window.location.href = 'dashboard.html';
+  // If the current page is public, never redirect away (fixes login/register refresh loop)
+  if (PUBLIC_PAGES.includes(currentPath)) {
+    console.log('Auth guard: staying on public page', currentPath);
     return;
   }
 
-  // If not logged in and on a private page, redirect to login (except login itself to avoid loop)
+  // If user is not logged in and page is private, redirect to login
   if (!user && !PUBLIC_PAGES.includes(currentPath)) {
-    if (currentPath === 'login.html') return;
     const redirect = encodeURIComponent(currentPath);
     window.location.href = `login.html?redirect=${redirect}`;
+    return;
   }
+
+  // If user is logged in and on a private page, do nothing (allow the page to load)
+  // The previous version redirected to dashboard even from private pages – that's now removed.
 }
