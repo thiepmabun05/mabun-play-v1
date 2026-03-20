@@ -1,6 +1,5 @@
-import { supabase } from '../core/supabase.js';
+// js/features/settings.js
 import { showModal } from '../utils/modal.js';
-import { getCurrentUser } from '../core/storage.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const elements = {
@@ -16,10 +15,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     terms: document.getElementById('terms')
   };
 
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    console.error('Supabase client not available');
+    return;
+  }
+
   const { data: { session } } = await supabase.auth.getSession();
   const user = session?.user;
   if (user && elements.linkedPhone) {
-    elements.linkedPhone.textContent = user.phone || '—';
+    // Get phone from profile
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('phone')
+      .eq('user_id', user.id)
+      .single();
+    if (!error && profile) elements.linkedPhone.textContent = profile.phone || '—';
+    else elements.linkedPhone.textContent = '—';
   }
 
   try {
@@ -102,6 +114,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (newPassword) {
       try {
+        // First sign in with current password to verify
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: newPassword.current,
+        });
+        if (signInError) throw new Error('Current password is incorrect');
+
         const { error } = await supabase.auth.updateUser({ password: newPassword.new });
         if (error) throw error;
         await showModal({ title: 'Success', message: 'Password updated successfully.', confirmText: 'OK' });
