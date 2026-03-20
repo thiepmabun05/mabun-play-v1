@@ -1,12 +1,10 @@
-import { supabase } from './supabase.js';
-
+// js/core/guards.js
 const PUBLIC_PAGES = [
   'index.html',
   'login.html',
   'register.html',
   'forgot-password.html',
   'reset-password.html',
-  'otp.html',
   'complete-profile.html',
   'privacy.html',
   'terms.html',
@@ -15,6 +13,8 @@ const PUBLIC_PAGES = [
 
 export async function setupAuthGuard() {
   const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+  const supabase = window.supabaseClient;
+  if (!supabase) return;
   const { data: { session } } = await supabase.auth.getSession();
   const user = session?.user;
 
