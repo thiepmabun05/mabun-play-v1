@@ -3,16 +3,47 @@ import { showModal } from '../utils/modal.js';
 import { validatePassword } from '../utils/validation.js';
 import { initPasswordToggles } from '../utils/password-toggle.js';
 
+console.log('Login script started'); // This will appear if the script loads
+
 document.addEventListener('DOMContentLoaded', () => {
-  initPasswordToggles();
+  console.log('DOMContentLoaded fired in login.js');
+
+  // Initialize password toggles (optional, but safe)
+  try {
+    initPasswordToggles();
+    console.log('Password toggles initialized');
+  } catch (e) {
+    console.error('initPasswordToggles error:', e);
+  }
 
   const form = document.getElementById('loginForm');
   const emailInput = document.getElementById('email');
   const submitBtn = document.getElementById('submitBtn');
 
-  if (!form || !emailInput || !submitBtn) return;
+  console.log('form found?', !!form);
+  console.log('emailInput found?', !!emailInput);
+  console.log('submitBtn found?', !!submitBtn);
+
+  if (!form || !emailInput || !submitBtn) {
+    console.error('Required elements missing');
+    return;
+  }
+
+  // Check Supabase client
+  if (typeof window.supabaseClient === 'undefined') {
+    console.error('Supabase client not defined');
+    showModal({
+      title: 'Configuration Error',
+      message: 'Supabase client not loaded. Please refresh or contact support.',
+      confirmText: 'OK'
+    });
+    return;
+  }
+
+  console.log('Supabase client found');
 
   form.addEventListener('submit', async (e) => {
+    console.log('Form submit event fired');
     e.preventDefault();
 
     const email = emailInput.value.trim();
@@ -50,4 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
       submitBtn.innerHTML = 'Log In <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>';
     }
   });
+
+  console.log('Login event listener attached');
 });
