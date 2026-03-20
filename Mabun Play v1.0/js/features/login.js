@@ -1,39 +1,23 @@
-import { supabase } from '../core/supabase.js';
+// js/features/login.js
 import { showModal } from '../utils/modal.js';
-import { validatePhone, validatePassword, detectProvider } from '../utils/validation.js';
+import { validatePassword } from '../utils/validation.js';
 import { initPasswordToggles } from '../utils/password-toggle.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   initPasswordToggles();
 
   const form = document.getElementById('loginForm');
-  const phoneInput = document.getElementById('phone');
-  const providerBadge = document.getElementById('providerBadge');
+  const emailInput = document.getElementById('email');
   const submitBtn = document.getElementById('submitBtn');
 
-  if (!form || !phoneInput || !providerBadge || !submitBtn) return;
-
-  phoneInput.addEventListener('input', () => {
-    const digits = phoneInput.value.replace(/\D/g, '');
-    const provider = detectProvider(digits);
-    if (provider === 'mtn') {
-      providerBadge.textContent = 'MTN';
-      providerBadge.className = 'provider-badge mtn';
-    } else if (provider === 'digitel') {
-      providerBadge.textContent = 'Digitel';
-      providerBadge.className = 'provider-badge digitel';
-    } else {
-      providerBadge.textContent = '';
-      providerBadge.className = 'provider-badge';
-    }
-  });
+  if (!form || !emailInput || !submitBtn) return;
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const rawPhone = phoneInput.value.replace(/\D/g, '');
-    if (!validatePhone(rawPhone)) {
-      await showModal({ title: 'Invalid Phone', message: 'Please enter a valid South Sudan number (92X or 98X).', confirmText: 'OK' });
+    const email = emailInput.value.trim();
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      await showModal({ title: 'Invalid Email', message: 'Please enter a valid email address.', confirmText: 'OK' });
       return;
     }
 
@@ -47,8 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
     submitBtn.innerHTML = '<span class="loader"></span> Logging in...';
 
     try {
+      const supabase = window.supabaseClient;
       const { data, error } = await supabase.auth.signInWithPassword({
-        phone: '+211' + rawPhone,
+        email,
         password,
       });
       if (error) throw error;
@@ -58,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Login error:', error);
       await showModal({
         title: 'Login Failed',
-        message: error.message || 'Incorrect phone or password.',
+        message: error.message || 'Incorrect email or password.',
         confirmText: 'OK',
       });
       submitBtn.disabled = false;
