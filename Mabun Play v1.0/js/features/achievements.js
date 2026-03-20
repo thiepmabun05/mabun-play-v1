@@ -1,4 +1,4 @@
-import { supabase } from '../core/supabase.js';
+// js/features/achievements.js
 import { showModal } from '../utils/modal.js';
 import { formatShortDate } from '../utils/formatters.js';
 
@@ -13,6 +13,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   if (elements.loadingSpinner) elements.loadingSpinner.style.display = 'block';
+
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    console.error('Supabase client not available');
+    showModal({ title: 'Error', message: 'Configuration error. Please refresh.', confirmText: 'OK' });
+    if (elements.loadingSpinner) elements.loadingSpinner.style.display = 'none';
+    return;
+  }
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
