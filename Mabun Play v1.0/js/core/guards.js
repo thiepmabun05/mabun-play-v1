@@ -1,5 +1,4 @@
 // js/core/guards.js
-
 const PUBLIC_PAGES = [
   'index.html',
   'login.html',
@@ -13,84 +12,47 @@ const PUBLIC_PAGES = [
 ];
 
 export async function setupAuthGuard() {
-  try {
-    // Wait for Supabase client to be ready
-    let retries = 0;
-    while (!window.supabaseClient && retries < 20) {
+  console.log('Auth guard running');
+  // Wait for Supabase client to be ready
+  let retries = 0;
+  while (!window.supabaseClient && retries < 20) {
+    await new Promise(r => setTimeout(r, 50));
+    retries++;
+  }
+  if (!window.supabaseClient) {
+    console.error('Supabase client not available for auth guard');
+    return;
+  }
+
+  // Wait for session to be available (if any)
+  let sessionRetries = 0;
+  let session = null;
+  while (!session && sessionRetries < 20) {
+    const { data: { session: sess } } = await window.supabaseClient.auth.getSession();
+    session = sess;
+    if (!session) {
       await new Promise(r => setTimeout(r, 50));
-      retries++;
+      sessionRetries++;
     }
+  }
+  const user = session?.user;
+  const currentPath = window.location.pathname.split('/').pop() || 'index.html';
 
-    if (!window.supabaseClient) {
-      console.error('Supabase client not available for auth guard');
-      return;
-    }
+  console.log('Auth guard - path:', currentPath, 'user:', !!user);
 
-    // Get session safely
-    const { data, error } = await window.supabaseClient.auth.getSession();
-
-    if (error) {
-      console.error('Error fetching session:', error.message);
-      return;
-    }
-
-    const session = data?.session;
-    const user = session?.user;
-
-    const currentPath = window.location.pathname.split('/').pop() || 'index.html';
-
-    // 🚨 Prevent infinite redirect loops
-    const isRedirecting = window.location.search.includes('redirect=');
-
-    // ============================
-    // ✅ LOGGED-IN USER LOGIC
-    // ============================
-    if (user) {
-      // If user is on auth pages → redirect to dashboard
-      const AUTH_PAGES = [
-        'login.html',
-        'register.html',
-        'forgot-password.html',
-        'reset-password.html'
-      ];
-
-      if (AUTH_PAGES.includes(currentPath)) {
-        // Prevent unnecessary reload
-        if (!window.location.href.includes('dashboard.html')) {
-          window.location.replace('dashboard.html');
-        }
-        return;
-      }
-
-      // Allow landing and info pages
-      return;
-    }
-
-    // ============================
-// ❌ NOT LOGGED-IN USER LOGIC
-// ============================
-if (!user) {
-  // Always allow public pages
-  if (PUBLIC_PAGES.includes(currentPath)) {
+  // If user is logged in and on a public page (except landing, privacy, terms, support), redirect to dashboard
+  if (user && PUBLIC_PAGES.includes(currentPath) && !['index.html', 'privacy.html', 'terms.html', 'support.html'].includes(currentPath)) {
+    console.log('Redirecting from public page to dashboard');
+    window.location.href = 'dashboard.html';
     return;
   }
 
-  // Extra safety: allow register/login pages explicitly
-  if (
-    currentPath === 'login.html' ||
-    currentPath === 'register.html' ||
-    currentPath === 'forgot-password.html' ||
-    currentPath === 'reset-password.html'
-  ) {
-    return;
+  // If not logged in and on a private page, redirect to login
+  if (!user && !PUBLIC_PAGES.includes(currentPath)) {
+    // Avoid redirect loop: if already on login page and the redirect parameter is set to a private page, we keep the login page
+    if (currentPath === 'login.html') return;
+    const redirect = encodeURIComponent(currentPath);
+    console.log('Redirecting to login with redirect:', redirect);
+    window.location.href = `login.html?redirect=${redirect}`;
   }
-
-  // Prevent redirect loop
-  if (window.location.search.includes('redirect=')) {
-    return;
-  }
-
-  // Redirect to login
-  const redirect = encodeURIComponent(currentPath);
-  window.location.replace(`login.html?redirect=${redirect}`);
 }
