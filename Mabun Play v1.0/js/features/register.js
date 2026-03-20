@@ -1,4 +1,3 @@
-// js/features/register.js
 import { showModal } from '../utils/modal.js';
 import { validatePhone, validatePassword, detectProvider } from '../utils/validation.js';
 import { initPasswordToggles } from '../utils/password-toggle.js';
@@ -13,6 +12,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const submitBtn = document.getElementById('submitBtn');
 
   if (!form || !emailInput || !phoneInput || !providerBadge || !submitBtn) return;
+
+  if (typeof window.supabaseClient === 'undefined') {
+    console.error('Supabase client not available');
+    showModal({ title: 'Error', message: 'Configuration error. Please refresh.', confirmText: 'OK' });
+    return;
+  }
 
   // Phone provider detection
   phoneInput.addEventListener('input', () => {
@@ -31,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+    e.preventDefault();  // Prevents page refresh
 
     const email = emailInput.value.trim();
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
@@ -61,20 +66,17 @@ document.addEventListener('DOMContentLoaded', () => {
     submitBtn.innerHTML = '<span class="loader"></span> Creating account...';
 
     try {
-      const supabase = window.supabaseClient;
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await window.supabaseClient.auth.signUp({
         email,
         password,
       });
       if (error) throw error;
 
-      // Store phone and provider for profile completion
       sessionStorage.setItem('pending_registration', JSON.stringify({
         phone: '+211' + rawPhone,
         provider: detectProvider(rawPhone) || 'mtn',
       }));
 
-      // Redirect to complete profile (no OTP)
       window.location.href = 'complete-profile.html';
     } catch (error) {
       console.error('Registration error:', error);
