@@ -1,4 +1,4 @@
-import { supabase } from '../core/supabase.js';
+// js/features/quiz.js
 import { showModal } from '../utils/modal.js';
 
 const elements = {
@@ -98,6 +98,9 @@ async function loadNextQuestion() {
   answerSubmitted = false;
 
   try {
+    const supabase = window.supabaseClient;
+    if (!supabase) throw new Error('Supabase client not available');
+
     const { data: next, error } = await supabase
       .rpc('get_next_question', { session_id: sessionId });
     if (error) throw error;
@@ -110,12 +113,15 @@ async function loadNextQuestion() {
     currentQuestion = next.question;
     const { data: session, error: sessError } = await supabase
       .from('quiz_sessions')
-      .select('score, streak')
+      .select('score, streak, total_questions, current_question_index')
       .eq('id', sessionId)
       .single();
     if (!sessError) {
       if (elements.scoreValue) elements.scoreValue.textContent = session.score;
       if (elements.streakCount) elements.streakCount.textContent = session.streak;
+      if (elements.questionCounter) {
+        elements.questionCounter.textContent = `${session.current_question_index + 1}/${session.total_questions}`;
+      }
     }
 
     renderQuestion(currentQuestion);
@@ -136,9 +142,6 @@ function renderQuestion(question) {
   if (!question) return;
 
   if (elements.quizTitle) elements.quizTitle.textContent = 'Quiz';
-  if (elements.questionCounter) {
-    // We'll fetch total questions from session later; for now, placeholder
-  }
   if (elements.difficultyStars) {
     const difficulty = question.difficulty || 'medium';
     let starCount = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3;
@@ -154,12 +157,12 @@ function renderQuestion(question) {
   if (elements.optionsGrid && question.options) {
     const letters = ['A', 'B', 'C', 'D'];
     elements.optionBtns.forEach((btn, index) => {
-      const option = question.options[index];
+      const option = question.options[letters[index]];
       if (option) {
         btn.style.display = 'flex';
         btn.querySelector('.option-letter').textContent = letters[index];
-        btn.querySelector('.option-text').textContent = option.text;
-        btn.dataset.optionId = option.id;
+        btn.querySelector('.option-text').textContent = option;
+        btn.dataset.optionId = letters[index];
         btn.disabled = false;
         btn.classList.remove('correct', 'incorrect', 'selected');
       } else {
@@ -167,7 +170,7 @@ function renderQuestion(question) {
       }
     });
   }
-  const timeAllowed = question.timeAllowed || 10;
+  const timeAllowed = question.time_allowed || 10;
   startTimer(timeAllowed);
 }
 
@@ -182,6 +185,7 @@ async function submitAnswer(optionId) {
   const waitTime = (timeLeft * 1000) + feedbackDelay;
 
   try {
+    const supabase = window.supabaseClient;
     const { data, error } = await supabase
       .rpc('submit_answer', {
         session_id: sessionId,
@@ -249,6 +253,9 @@ async function initQuiz() {
 
   setLoading(true);
   try {
+    const supabase = window.supabaseClient;
+    if (!supabase) throw new Error('Supabase client not available');
+
     const { data: first, error } = await supabase
       .rpc('get_next_question', { session_id: sessionId });
     if (error) throw error;
