@@ -1,9 +1,6 @@
-import { supabase } from '../core/supabase.js';
 import { showModal } from '../utils/modal.js';
 import { formatCurrency } from '../utils/formatters.js';
-import config from '../core/config.js';
 
-// DOM elements
 const elements = {
   walletAmount: document.getElementById('wallet-amount'),
   userName: document.getElementById('user-name'),
@@ -35,47 +32,41 @@ let state = {
   autoSubscribe: false,
 };
 
-// Helper to show toast (simple alert replacement)
-function showToast(title, message, icon = 'success') {
-  Swal.fire({
-    toast: true,
-    position: 'top-end',
-    icon: icon,
-    title: message,
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true,
-  });
-}
-
-// Fetch all dashboard data from Supabase
 async function fetchDashboard() {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = window.supabaseClient;
+    if (!supabase) throw new Error('Supabase client not available');
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) throw userError;
     if (!user) throw new Error('Not authenticated');
 
-    // Get user profile (username, stats, wallet)
+    console.log('Logged in user:', user);
+
+    // Fetch user profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('username, winnings, played, rank, wallet_balance')
       .eq('user_id', user.id)
       .single();
 
-    if (profileError) throw profileError;
+    if (profileError) {
+      console.error('Profile fetch error:', profileError);
+    } else {
+      state.user.name = profile.username;
+      state.user.winnings = profile.winnings || 0;
+      state.user.played = profile.played || 0;
+      state.user.rank = profile.rank || 0;
+      state.user.wallet = profile.wallet_balance || 0;
+    }
 
-    state.user.name = profile.username;
-    state.user.winnings = profile.winnings || 0;
-    state.user.played = profile.played || 0;
-    state.user.rank = profile.rank || 0;
-    state.user.wallet = profile.wallet_balance || 0;
-
-    // Fetch current live quiz (hourly)
+    // Fetch live quiz (hourly)
     const { data: liveQuiz, error: liveError } = await supabase
       .from('quizzes')
       .select('id, title, prize_pool, current_quiz_ends_at, next_quiz_starts_at')
       .eq('type', 'hourly')
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
     if (!liveError && liveQuiz) {
       state.liveQuiz = {
@@ -85,9 +76,8 @@ async function fetchDashboard() {
         prizePool: liveQuiz.prize_pool,
         currentQuizEndsAt: liveQuiz.current_quiz_ends_at,
         nextQuizStartsAt: liveQuiz.next_quiz_starts_at,
-        canPay: true,     // Always true (free)
-        canJoin: true,    // Always true (free)
-        hasPaid: false,
+        canPay: true,
+        canJoin: true,
       };
     }
 
@@ -96,7 +86,8 @@ async function fetchDashboard() {
       .from('challenges')
       .select('prize_pool, payout_time')
       .eq('type', 'daily')
-      .single();
+      .maybeSingle();
+
     if (!dailyError && daily) {
       state.dailyChallenge.prizePool = daily.prize_pool;
       state.dailyChallenge.payoutTime = daily.payout_time;
@@ -106,7 +97,7 @@ async function fetchDashboard() {
         .select('id')
         .eq('challenge_type', 'daily')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       if (!entryError && entry) state.dailyChallenge.hasEntered = true;
     }
 
@@ -115,35 +106,35 @@ async function fetchDashboard() {
       .from('challenges')
       .select('prize_pool, ends_at, payout_time')
       .eq('type', 'weekly')
-      .single();
+      .maybeSingle();
+
     if (!weeklyError && weekly) {
       state.weeklyChallenge.prizePool = weekly.prize_pool;
       state.weeklyChallenge.endsAt = weekly.ends_at;
       state.weeklyChallenge.payoutTime = weekly.payout_time;
-      // Check if user already entered
       const { data: entry, error: entryError } = await supabase
         .from('challenge_entries')
         .select('id')
         .eq('challenge_type', 'weekly')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       if (!entryError && entry) state.weeklyChallenge.hasEntered = true;
     }
 
-    // Check auto-subscribe status (if any)
+    // Check auto-subscribe
     const { data: sub, error: subError } = await supabase
       .from('subscriptions')
       .select('id')
       .eq('user_id', user.id)
       .eq('type', 'daily')
-      .single();
+      .maybeSingle();
     if (!subError && sub) state.autoSubscribe = true;
 
     renderAll();
     updateTimers();
   } catch (err) {
-    console.error(err);
-    showModal({ title: 'Error', message: 'Could not load dashboard. Please refresh.', confirmText: 'OK' });
+    console.error('Dashboard error:', err);
+    showModal({ title: 'Error', message: err.message || 'Could not load dashboard.', confirmText: 'OK' });
   }
 }
 
@@ -167,7 +158,6 @@ function renderUser() {
 function renderLiveQuiz() {
   if (elements.liveQuizTitle) elements.liveQuizTitle.textContent = state.liveQuiz.title;
   if (elements.hourlyPrize) elements.hourlyPrize.textContent = formatCurrency(state.liveQuiz.prizePool);
-  // Since payments are disabled, always show "Join Now"
   if (elements.payBtn) elements.payBtn.textContent = 'Free Entry';
 }
 
@@ -236,24 +226,19 @@ function updateTimers() {
 }
 
 function updateButtonStates() {
-  // For free entry, always allow joining
   if (elements.payBtn) elements.payBtn.disabled = false;
   if (elements.joinBtn) elements.joinBtn.disabled = !state.liveQuiz.canJoin;
   if (elements.dailyChallengeBtn) elements.dailyChallengeBtn.disabled = state.dailyChallenge.hasEntered;
   if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.disabled = state.weeklyChallenge.hasEntered;
 }
 
-// Free entry: mark as paid and enable join
 async function handlePayEntry() {
-  if (!state.liveQuiz.canPay) return;
   state.liveQuiz.hasPaid = true;
   state.liveQuiz.canJoin = true;
   renderLiveQuiz();
   updateButtonStates();
-  showToast('Free Entry', 'You can now join the quiz for free!', 'success');
 }
 
-// Join the hourly quiz
 async function handleJoinQuiz() {
   if (!state.liveQuiz.canJoin) {
     await showModal({ title: 'Cannot Join', message: 'Joining is not available at this time.', confirmText: 'OK' });
@@ -261,6 +246,7 @@ async function handleJoinQuiz() {
   }
 
   try {
+    const supabase = window.supabaseClient;
     const { data: { user } } = await supabase.auth.getUser();
     const { data: session, error } = await supabase
       .from('quiz_sessions')
@@ -281,7 +267,6 @@ async function handleJoinQuiz() {
   }
 }
 
-// Enter daily or weekly challenge (free)
 async function handleChallengeEntry(e) {
   e.preventDefault();
   const btn = e.currentTarget;
@@ -294,6 +279,7 @@ async function handleChallengeEntry(e) {
 
   try {
     btn.disabled = true;
+    const supabase = window.supabaseClient;
     const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from('challenge_entries')
@@ -307,7 +293,6 @@ async function handleChallengeEntry(e) {
     if (challenge === 'daily') state.dailyChallenge.hasEntered = true;
     else state.weeklyChallenge.hasEntered = true;
     renderAll();
-    showToast('Success', `You have entered the ${challenge} challenge!`, 'success');
   } catch (err) {
     console.error(err);
     await showModal({
@@ -320,12 +305,10 @@ async function handleChallengeEntry(e) {
   }
 }
 
-// Auto-subscribe (placeholder)
 async function handleSubscribe() {
   await showModal({ title: 'Coming Soon', message: 'Subscription feature is not yet available.', confirmText: 'OK' });
 }
 
-// Initialize
 function init() {
   fetchDashboard();
   setInterval(updateTimers, 1000);
