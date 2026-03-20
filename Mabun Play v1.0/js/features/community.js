@@ -1,4 +1,4 @@
-import { supabase } from '../core/supabase.js';
+// js/features/community.js
 import { showModal } from '../utils/modal.js';
 import { throttle } from '../utils/helpers.js';
 
@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     backToTopBtn: document.getElementById('backToTopBtn'),
     postImageUpload: document.getElementById('postImageUpload'),
     imagePreview: document.getElementById('imagePreview'),
-    removeImageBtn: document.getElementById('removeImageBtn')
   };
 
   let currentFeed = 'latest';
@@ -42,6 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let loading = false;
   let hasMore = true;
   let selectedImageFile = null;
+
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    console.error('Supabase client not available');
+    return;
+  }
 
   async function loadPosts(feed, pageNum) {
     if (loading || !hasMore) return;
@@ -69,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (followingIds.length) {
           query = query.in('user_id', followingIds);
         } else {
-          query = query.eq('user_id', '00000000-0000-0000-0000-000000000000'); // no results
+          query = query.eq('user_id', '00000000-0000-0000-0000-000000000000');
         }
       }
 
