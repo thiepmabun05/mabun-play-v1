@@ -1,9 +1,15 @@
-import { supabase } from '../core/supabase.js';
+// js/features/support.js
 import { showModal } from '../utils/modal.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('contactForm');
   if (!form) return;
+
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    console.error('Supabase client not available');
+    return;
+  }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
