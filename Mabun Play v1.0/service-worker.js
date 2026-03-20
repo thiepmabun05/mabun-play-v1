@@ -1,4 +1,5 @@
-const CACHE_NAME = 'mabun-play-v1';
+// service-worker.js – Offline caching for Mabun Quiz PWA
+const CACHE_NAME = 'mabun-quiz-v1';
 
 const STATIC_ASSETS = [
   '/',
@@ -53,7 +54,6 @@ const STATIC_ASSETS = [
   '/css/components/toasts.css',
   '/js/core/app.js',
   '/js/core/config.js',
-  '/js/core/supabase.js',
   '/js/core/storage.js',
   '/js/core/guards.js',
   '/js/features/login.js',
@@ -89,6 +89,7 @@ const STATIC_ASSETS = [
   '/manifest.json'
 ];
 
+// Install event – cache static assets
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -97,6 +98,7 @@ self.addEventListener('install', event => {
   );
 });
 
+// Activate event – clean up old caches
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
@@ -108,7 +110,9 @@ self.addEventListener('activate', event => {
   );
 });
 
+// Fetch event – caching strategies (network-first for dynamic, cache-first for static)
 self.addEventListener('fetch', event => {
+  // Static assets – Cache First
   if (event.request.destination === 'style' ||
       event.request.destination === 'script' ||
       event.request.destination === 'image' ||
@@ -120,6 +124,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // HTML pages – Stale‑While‑Revalidate
   event.respondWith(
     caches.match(event.request)
       .then(cached => {
