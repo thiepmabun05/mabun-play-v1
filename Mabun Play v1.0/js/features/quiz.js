@@ -1,6 +1,7 @@
 // js/features/quiz.js
 import { showModal } from '../utils/modal.js';
 
+// DOM elements
 const elements = {
   quitBtn: document.getElementById('quitQuiz'),
   quizTitle: document.getElementById('quizTitle'),
@@ -27,10 +28,12 @@ let answerSubmitted = false;
 let loading = false;
 let nextQuestionTimer = null;
 
+// Helper to parse URL parameters
 function getUrlParams() {
   const urlParams = new URLSearchParams(window.location.search);
   quizId = urlParams.get('id');
   sessionId = urlParams.get('session');
+  console.log('Quiz ID:', quizId, 'Session ID:', sessionId);
 }
 
 function setLoading(isLoading) {
@@ -57,7 +60,7 @@ function updateTimerDisplay() {
   elements.timerText.textContent = timeLeft;
 
   if (elements.timerProgress && totalTimeAllowed > 0) {
-    const circumference = 2 * Math.PI * 18;
+    const circumference = 2 * Math.PI * 18; // r=18
     const offset = circumference * (1 - timeLeft / totalTimeAllowed);
     elements.timerProgress.style.strokeDashoffset = offset;
 
@@ -86,62 +89,19 @@ function startTimer(seconds) {
     if (timeLeft <= 0) {
       stopTimer();
       if (!answerSubmitted && !loading) {
+        // Time's up – submit null answer
         submitAnswer(null);
       }
     }
   }, 1000);
 }
 
-async function loadNextQuestion() {
-  stopTimer();
-  setLoading(true);
-  answerSubmitted = false;
-
-  try {
-    const supabase = window.supabaseClient;
-    if (!supabase) throw new Error('Supabase client not available');
-
-    const { data: next, error } = await supabase
-      .rpc('get_next_question', { session_id: sessionId });
-    if (error) throw error;
-
-    if (next.finished) {
-      window.location.href = `results.html?id=${quizId}&session=${sessionId}`;
-      return;
-    }
-
-    currentQuestion = next.question;
-    const { data: session, error: sessError } = await supabase
-      .from('quiz_sessions')
-      .select('score, streak, total_questions, current_question_index')
-      .eq('id', sessionId)
-      .single();
-    if (!sessError) {
-      if (elements.scoreValue) elements.scoreValue.textContent = session.score;
-      if (elements.streakCount) elements.streakCount.textContent = session.streak;
-      if (elements.questionCounter) {
-        elements.questionCounter.textContent = `${session.current_question_index + 1}/${session.total_questions}`;
-      }
-    }
-
-    renderQuestion(currentQuestion);
-  } catch (err) {
-    console.error('Failed to load next question:', err);
-    await showModal({
-      title: 'Error',
-      message: err.message || 'Could not load next question. Please refresh.',
-      confirmText: 'OK',
-    });
-    window.location.href = 'dashboard.html';
-  } finally {
-    setLoading(false);
-  }
-}
-
+// Render a single question
 function renderQuestion(question) {
   if (!question) return;
 
-  if (elements.quizTitle) elements.quizTitle.textContent = 'Quiz';
+  if (elements.quizTitle) elements.quizTitle.textContent = 'Quiz'; // or get from session
+  // Question counter will be updated by the next question call
   if (elements.difficultyStars) {
     const difficulty = question.difficulty || 'medium';
     let starCount = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3;
@@ -170,49 +130,102 @@ function renderQuestion(question) {
       }
     });
   }
-  const timeAllowed = question.time_allowed || 10;
+  const timeAllowed = question.timeAllowed || 10;
   startTimer(timeAllowed);
 }
 
+// Load the next question from the server
+async function loadNextQuestion() {
+  stopTimer();
+  setLoading(true);
+  answerSubmitted = false;
+
+  try {
+    const supabase = window.supabaseClient;
+    if (!supabase) throw new Error('Supabase client not available');
+
+    const { data: next, error } = await supabase.rpc('get_next_question', { session_id: sessionId });
+    if (error) throw error;
+
+    if (next.finished) {
+      console.log('Quiz finished, redirecting to results');
+      window.location.href = `results.html?id=${quizId}&session=${sessionId}`;
+      return;
+    }
+
+    currentQuestion = next.question;
+    // Update session info (score, streak)
+    if (elements.scoreValue) elements.scoreValue.textContent = next.session.score;
+    if (elements.streakCount) elements.streakCount.textContent = next.session.streak;
+    if (elements.questionCounter) {
+      elements.questionCounter.textContent = `${next.session.currentQuestionIndex + 1}/${next.session.totalQuestions}`;
+    }
+
+    renderQuestion(currentQuestion);
+  } catch (err) {
+    console.error('Failed to load next question:', err);
+    await showModal({
+      title: 'Error',
+      message: err.message || 'Could not load next question. Please refresh.',
+      confirmText: 'OK',
+    });
+    window.location.href = 'dashboard.html';
+  } finally {
+    setLoading(false);
+  }
+}
+
+// Submit the selected answer
 async function submitAnswer(optionId) {
   if (answerSubmitted || loading) return;
   answerSubmitted = true;
   stopTimer();
 
+  // Disable all options immediately
   elements.optionBtns.forEach(btn => btn.disabled = true);
 
-  const feedbackDelay = 300;
-  const waitTime = (timeLeft * 1000) + feedbackDelay;
+  // The server expects the remaining time (we are at timeLeft)
+  const timeRemaining = timeLeft; // seconds
+
+  // We must wait the remaining time before loading the next question
+  const feedbackDelay = 300; // milliseconds
+  const waitTime = (timeRemaining * 1000) + feedbackDelay;
 
   try {
     const supabase = window.supabaseClient;
-    const { data, error } = await supabase
-      .rpc('submit_answer', {
-        session_id: sessionId,
-        question_id: currentQuestion.id,
-        option_id: optionId,
-        time_remaining: timeLeft,
-      });
+    if (!supabase) throw new Error('Supabase client not available');
+
+    const payload = {
+      session_id: sessionId,
+      question_id: currentQuestion.id,
+      option_id: optionId,
+      time_remaining: timeRemaining,
+    };
+    const { data: result, error } = await supabase.rpc('submit_answer', payload);
     if (error) throw error;
 
-    if (elements.scoreValue) elements.scoreValue.textContent = data.newScore;
-    if (elements.streakCount) elements.streakCount.textContent = data.newStreak;
+    // Update UI with result
+    if (elements.scoreValue) elements.scoreValue.textContent = result.newScore;
+    if (elements.streakCount) elements.streakCount.textContent = result.newStreak;
 
-    if (data.correctOptionId) {
+    // Highlight correct/incorrect
+    if (result.correctOptionId) {
       elements.optionBtns.forEach(btn => {
-        if (btn.dataset.optionId === data.correctOptionId) {
+        if (btn.dataset.optionId === result.correctOptionId) {
           btn.classList.add('correct');
         }
-        if (optionId && btn.dataset.optionId === optionId && !data.correct) {
+        if (optionId && btn.dataset.optionId === optionId && !result.correct) {
           btn.classList.add('incorrect');
         }
       });
     }
 
+    // Schedule next question after the wait
     clearNextTimer();
     nextQuestionTimer = setTimeout(() => {
       loadNextQuestion();
     }, waitTime);
+
   } catch (err) {
     console.error('Answer submission failed:', err);
     await showModal({
@@ -221,21 +234,26 @@ async function submitAnswer(optionId) {
       confirmText: 'OK',
     });
     setLoading(false);
+    // Even on error, we still try to load next after a short delay (maybe recover)
     nextQuestionTimer = setTimeout(() => loadNextQuestion(), 1000);
   }
 }
 
+// Event handler for option clicks
 function onOptionClick(e) {
   const btn = e.currentTarget;
   if (btn.disabled || answerSubmitted || loading) return;
   const optionId = btn.dataset.optionId;
   if (!optionId) return;
 
+  // Visual feedback: mark as selected
   elements.optionBtns.forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
+
   submitAnswer(optionId);
 }
 
+// Quit modal handlers
 function openQuitModal() {
   if (elements.quitModal) elements.quitModal.classList.add('active');
 }
@@ -243,6 +261,7 @@ function closeQuitModal() {
   if (elements.quitModal) elements.quitModal.classList.remove('active');
 }
 
+// Initialization
 async function initQuiz() {
   getUrlParams();
   if (!quizId || !sessionId) {
@@ -256,8 +275,8 @@ async function initQuiz() {
     const supabase = window.supabaseClient;
     if (!supabase) throw new Error('Supabase client not available');
 
-    const { data: first, error } = await supabase
-      .rpc('get_next_question', { session_id: sessionId });
+    // Get the first question using the same RPC
+    const { data: first, error } = await supabase.rpc('get_next_question', { session_id: sessionId });
     if (error) throw error;
 
     if (first.finished) {
@@ -266,17 +285,11 @@ async function initQuiz() {
     }
 
     currentQuestion = first.question;
-    const { data: session, error: sessError } = await supabase
-      .from('quiz_sessions')
-      .select('score, streak, total_questions, current_question_index')
-      .eq('id', sessionId)
-      .single();
-    if (!sessError) {
-      if (elements.scoreValue) elements.scoreValue.textContent = session.score;
-      if (elements.streakCount) elements.streakCount.textContent = session.streak;
-      if (elements.questionCounter) {
-        elements.questionCounter.textContent = `${session.current_question_index + 1}/${session.total_questions}`;
-      }
+    // Update initial UI
+    if (elements.scoreValue) elements.scoreValue.textContent = first.session.score;
+    if (elements.streakCount) elements.streakCount.textContent = first.session.streak;
+    if (elements.questionCounter) {
+      elements.questionCounter.textContent = `${first.session.currentQuestionIndex + 1}/${first.session.totalQuestions}`;
     }
 
     renderQuestion(currentQuestion);
@@ -293,6 +306,7 @@ async function initQuiz() {
   }
 }
 
+// Attach event listeners
 function attachEvents() {
   elements.optionBtns.forEach(btn => btn.addEventListener('click', onOptionClick));
   if (elements.quitBtn) elements.quitBtn.addEventListener('click', openQuitModal);
