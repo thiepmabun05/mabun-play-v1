@@ -67,25 +67,30 @@ export async function setupAuthGuard() {
     }
 
     // ============================
-    // ❌ NOT LOGGED-IN USER LOGIC
-    // ============================
-    if (!user) {
-      // If already on a public page → allow
-      if (PUBLIC_PAGES.includes(currentPath)) {
-        return;
-      }
-
-      // Prevent redirect loop
-      if (currentPath === 'login.html' || isRedirecting) {
-        return;
-      }
-
-      // Redirect to login with return path
-      const redirect = encodeURIComponent(currentPath);
-      window.location.replace(`login.html?redirect=${redirect}`);
-    }
-
-  } catch (err) {
-    console.error('Auth guard error:', err);
+// ❌ NOT LOGGED-IN USER LOGIC
+// ============================
+if (!user) {
+  // Always allow public pages
+  if (PUBLIC_PAGES.includes(currentPath)) {
+    return;
   }
+
+  // Extra safety: allow register/login pages explicitly
+  if (
+    currentPath === 'login.html' ||
+    currentPath === 'register.html' ||
+    currentPath === 'forgot-password.html' ||
+    currentPath === 'reset-password.html'
+  ) {
+    return;
+  }
+
+  // Prevent redirect loop
+  if (window.location.search.includes('redirect=')) {
+    return;
+  }
+
+  // Redirect to login
+  const redirect = encodeURIComponent(currentPath);
+  window.location.replace(`login.html?redirect=${redirect}`);
 }
