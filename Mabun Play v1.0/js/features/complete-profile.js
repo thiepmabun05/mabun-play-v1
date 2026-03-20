@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   mmBadge.className = `mm-badge ${provider}`;
   providerInput.value = provider;
 
-  // Get current user from Supabase
   const supabase = window.supabaseClient;
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
@@ -54,11 +53,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     submitBtn.innerHTML = '<span class="loader"></span> Saving...';
 
     try {
-      // Insert profile using the user's ID as the primary key
       const { error: insertError } = await supabase
         .from('profiles')
         .insert({
-          id: user.id,            // use 'id' column
+          id: user.id,
           username,
           email: user.email,
           phone: pendingData.phone,
@@ -72,7 +70,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (insertError) throw insertError;
 
       await supabase.auth.updateUser({ data: { username } });
-
       sessionStorage.removeItem('pending_registration');
       window.location.href = 'dashboard.html';
     } catch (error) {
