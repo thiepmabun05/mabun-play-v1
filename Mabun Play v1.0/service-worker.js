@@ -1,32 +1,9 @@
-// service-worker.js – Offline caching for Mabun Quiz PWA
-const CACHE_NAME = 'mabun-quiz-v1';
+// service-worker.js – SAFE version (no HTML caching, no auth conflicts)
 
+const CACHE_NAME = 'mabun-static-v2';
+
+// Only cache STATIC assets (NO HTML pages)
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/dashboard.html',
-  '/quiz.html',
-  '/leaderboard.html',
-  '/wallet.html',
-  '/profile.html',
-  '/community.html',
-  '/notifications.html',
-  '/settings.html',
-  '/history.html',
-  '/results.html',
-  '/login.html',
-  '/register.html',
-  '/otp.html',
-  '/complete-profile.html',
-  '/forgot-password.html',
-  '/reset-password.html',
-  '/terms.html',
-  '/privacy.html',
-  '/support.html',
-  '/transactions.html',
-  '/deposit.html',
-  '/withdraw.html',
-  '/achievements.html',
   '/css/main.css',
   '/css/auth.css',
   '/css/dashboard.css',
@@ -52,10 +29,12 @@ const STATIC_ASSETS = [
   '/css/components/modals.css',
   '/css/components/loaders.css',
   '/css/components/toasts.css',
+
   '/js/core/app.js',
   '/js/core/config.js',
   '/js/core/storage.js',
   '/js/core/guards.js',
+
   '/js/features/login.js',
   '/js/features/register.js',
   '/js/features/forgot-password.js',
@@ -77,19 +56,20 @@ const STATIC_ASSETS = [
   '/js/features/history.js',
   '/js/features/results.js',
   '/js/features/support.js',
+
   '/js/utils/modal.js',
   '/js/utils/password-toggle.js',
   '/js/utils/validation.js',
   '/js/utils/formatters.js',
   '/js/utils/helpers.js',
+
   '/assets/images/logo.png',
   '/assets/images/default-avatar.png',
   '/assets/icons/icon-192.png',
-  '/assets/icons/icon-512.png',
-  '/manifest.json'
+  '/assets/icons/icon-512.png'
 ];
 
-// Install event – cache static assets
+// ✅ INSTALL — cache only static files
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -98,44 +78,49 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activate event – clean up old caches
+// ✅ ACTIVATE — clean old caches
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
-        keys.filter(key => key !== CACHE_NAME)
+        keys
+          .filter(key => key !== CACHE_NAME)
           .map(key => caches.delete(key))
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Fetch event – caching strategies (network-first for dynamic, cache-first for static)
+// ✅ FETCH — SAFE STRATEGY
 self.addEventListener('fetch', event => {
-  // Static assets – Cache First
-  if (event.request.destination === 'style' ||
-      event.request.destination === 'script' ||
-      event.request.destination === 'image' ||
-      event.request.destination === 'font') {
-    event.respondWith(
-      caches.match(event.request)
-        .then(response => response || fetch(event.request))
-    );
-    return;
+  const request = event.request;
+
+  // ❌ NEVER cache Supabase or external APIs
+  if (request.url.includes('supabase')) {
+    return; // let browser handle it
   }
 
-  // HTML pages – Stale‑While‑Revalidate
-  event.respondWith(
-    caches.match(event.request)
-      .then(cached => {
-        const fetchPromise = fetch(event.request)
-          .then(networkResponse => {
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, networkResponse.clone());
-            });
+  // ❌ NEVER cache HTML pages (prevents reload loops)
+  if (request.headers.get('accept')?.includes('text/html')) {
+    return; // always fetch fresh page
+  }
+
+  // ✅ Cache only static assets
+  if (
+    request.destination === 'style' ||
+    request.destination === 'script' ||
+    request.destination === 'image' ||
+    request.destination === 'font'
+  ) {
+    event.respondWith(
+      caches.match(request).then(cached => {
+        return cached || fetch(request).then(networkResponse => {
+          return caches.open(CACHE_NAME).then(cache => {
+            cache.put(request, networkResponse.clone());
             return networkResponse;
           });
-        return cached || fetchPromise;
+        });
       })
-  );
+    );
+  }
 });
