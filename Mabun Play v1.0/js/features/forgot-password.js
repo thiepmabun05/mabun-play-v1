@@ -1,20 +1,20 @@
-import { supabase } from '../core/supabase.js';
+// js/features/forgot-password.js
 import { showModal } from '../utils/modal.js';
-import { validatePhone } from '../utils/validation.js';
+import { validateEmail } from '../utils/validation.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('forgotForm');
-  const phoneInput = document.getElementById('phone');
+  const emailInput = document.getElementById('email');
   const submitBtn = document.getElementById('submitBtn');
 
-  if (!form || !phoneInput || !submitBtn) return;
+  if (!form || !emailInput || !submitBtn) return;
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const rawPhone = phoneInput.value.replace(/\D/g, '');
-    if (!validatePhone(rawPhone)) {
-      await showModal({ title: 'Invalid Phone', message: 'Please enter a valid South Sudan number (92X or 98X).', confirmText: 'OK' });
+    const email = emailInput.value.trim();
+    if (!validateEmail(email)) {
+      await showModal({ title: 'Invalid Email', message: 'Please enter a valid email address.', confirmText: 'OK' });
       return;
     }
 
@@ -22,25 +22,25 @@ document.addEventListener('DOMContentLoaded', () => {
     submitBtn.innerHTML = '<span class="loader"></span> Sending...';
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(rawPhone + '@temp.mabun.com'); // Supabase email-based
-      // For phone, you'd need a custom function; we'll use email fallback for now.
+      const supabase = window.supabaseClient;
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;
 
       await showModal({
-        title: 'Reset Link Sent',
-        message: 'A password reset link has been sent to your registered email. If you did not receive it, please contact support.',
+        title: 'Reset Email Sent',
+        message: 'Check your email for a password reset link.',
         confirmText: 'OK',
       });
       window.location.href = 'login.html';
     } catch (error) {
-      console.error('Forgot password error:', error);
+      console.error('Reset error:', error);
       await showModal({
         title: 'Error',
-        message: error.message || 'Could not send reset link. Please try again.',
+        message: error.message || 'Could not send reset email. Please try again.',
         confirmText: 'OK',
       });
       submitBtn.disabled = false;
-      submitBtn.innerHTML = 'Send Reset Code <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>';
+      submitBtn.innerHTML = 'Send Reset Link <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>';
     }
   });
 });
