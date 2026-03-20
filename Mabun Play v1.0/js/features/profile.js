@@ -1,7 +1,9 @@
+// js/features/profile.js
 import { showModal } from '../utils/modal.js';
 import { formatCurrency } from '../utils/formatters.js';
 import { getQueryParam } from '../utils/helpers.js';
 
+// DOM elements
 const elements = {
   avatarImg: document.getElementById('avatarImg'),
   avatarUploadBtn: document.getElementById('avatarUploadBtn'),
@@ -43,6 +45,7 @@ let currentUser = null;
 let isOwnProfile = false;
 let loadingSwal = null;
 
+// ========== Helper functions ==========
 function setLoading(isLoading) {
   if (isLoading) {
     loadingSwal = Swal.fire({
@@ -68,27 +71,12 @@ function showToast(title, message, icon = 'success') {
   });
 }
 
-async function fetchCurrentUser() {
-  const supabase = window.supabaseClient;
-  if (!supabase) return null;
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return null;
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_id', session.user.id)
-    .single();
-  if (error) {
-    console.error('Error fetching current user profile:', error);
-    return null;
-  }
-  return { ...session.user, ...profile };
-}
-
+// ========== Core data fetching ==========
 async function fetchProfile(userId = null) {
-  setLoading(true);
   const supabase = window.supabaseClient;
   if (!supabase) return null;
+
+  setLoading(true);
   try {
     if (userId) {
       const { data, error } = await supabase
@@ -137,6 +125,7 @@ async function fetchFollowStats(userId) {
   }
 }
 
+// ========== Render UI ==========
 function renderProfile() {
   if (!profileUser) return;
 
@@ -198,6 +187,7 @@ function renderProfile() {
   }
 }
 
+// ========== Logout ==========
 function addLogoutButton() {
   if (document.getElementById('logoutBtn')) return;
   const logoutBtn = document.createElement('button');
@@ -225,6 +215,7 @@ async function handleLogout() {
   }
 }
 
+// ========== Follow / Unfollow ==========
 async function handleFollow() {
   if (!currentUser || !profileUser) return;
 
@@ -263,6 +254,7 @@ async function handleFollow() {
   }
 }
 
+// ========== Avatar Upload ==========
 async function uploadAvatar(file) {
   const supabase = window.supabaseClient;
   if (!supabase) throw new Error('Supabase client not available');
@@ -281,27 +273,6 @@ async function uploadAvatar(file) {
     .eq('user_id', user.data.user.id);
   if (updateError) throw updateError;
   return publicUrl;
-}
-
-async function updateProfileField(field, value) {
-  const supabase = window.supabaseClient;
-  if (!supabase) throw new Error('Supabase client not available');
-  try {
-    const { data: updated, error } = await supabase
-      .from('profiles')
-      .update({ [field]: value })
-      .eq('user_id', currentUser.user_id)
-      .select()
-      .single();
-    if (error) throw error;
-    profileUser = { ...profileUser, ...updated };
-    currentUser = profileUser;
-    renderProfile();
-    showToast('Success', `${field} updated!`, 'success');
-  } catch (err) {
-    console.error(err);
-    showToast('Error', `Could not update ${field}.`, 'error');
-  }
 }
 
 function setupAvatarUpload() {
@@ -327,6 +298,28 @@ function setupAvatarUpload() {
       }
     }
   });
+}
+
+// ========== Update Profile Fields ==========
+async function updateProfileField(field, value) {
+  const supabase = window.supabaseClient;
+  if (!supabase) throw new Error('Supabase client not available');
+  try {
+    const { data: updated, error } = await supabase
+      .from('profiles')
+      .update({ [field]: value })
+      .eq('user_id', currentUser.user_id)
+      .select()
+      .single();
+    if (error) throw error;
+    profileUser = { ...profileUser, ...updated };
+    currentUser = profileUser;
+    renderProfile();
+    showToast('Success', `${field} updated!`, 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('Error', `Could not update ${field}.`, 'error');
+  }
 }
 
 function setupEditUsername() {
@@ -406,25 +399,7 @@ function setupEditProfile() {
   });
 }
 
-function setupBackButton() {
-  elements.backBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.history.back();
-  });
-}
-
-function setupAchievements() {
-  elements.viewAllAchievements.addEventListener('click', (e) => {
-    e.preventDefault();
-    const userIdParam = !isOwnProfile ? `?userId=${profileUser.user_id}` : '';
-    window.location.href = `achievements.html${userIdParam}`;
-  });
-}
-
-function setupFollow() {
-  elements.followBtn.addEventListener('click', handleFollow);
-}
-
+// ========== KYC ==========
 async function loadKycStatus() {
   const supabase = window.supabaseClient;
   if (!supabase) return;
@@ -521,6 +496,7 @@ function setupKycPreview() {
   }
 }
 
+// ========== Email Verification ==========
 async function checkEmailVerification() {
   const supabase = window.supabaseClient;
   if (!supabase) return;
@@ -555,19 +531,75 @@ function setupResendVerification() {
   }
 }
 
+// ========== Navigation & Helpers ==========
+function setupBackButton() {
+  elements.backBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.history.back();
+  });
+}
+
+function setupAchievements() {
+  elements.viewAllAchievements.addEventListener('click', (e) => {
+    e.preventDefault();
+    const userIdParam = !isOwnProfile ? `?userId=${profileUser.user_id}` : '';
+    window.location.href = `achievements.html${userIdParam}`;
+  });
+}
+
+function setupFollow() {
+  elements.followBtn.addEventListener('click', handleFollow);
+}
+
+// ========== Initialisation ==========
 (async function init() {
-  currentUser = await fetchCurrentUser();
-  if (!currentUser) {
+  // Wait for Supabase client
+  let retries = 0;
+  while (!window.supabaseClient && retries < 20) {
+    await new Promise(r => setTimeout(r, 50));
+    retries++;
+  }
+  if (!window.supabaseClient) {
+    console.error('Supabase client not available');
     window.location.href = 'login.html';
     return;
   }
+
+  // Check session
+  const { data: { session }, error: sessionError } = await window.supabaseClient.auth.getSession();
+  if (sessionError || !session) {
+    console.error('No active session, redirecting to login');
+    window.location.href = 'login.html';
+    return;
+  }
+
+  // Fetch profile
+  const { data: profile, error: profileError } = await window.supabaseClient
+    .from('profiles')
+    .select('*')
+    .eq('user_id', session.user.id)
+    .single();
+
+  if (profileError) {
+    if (profileError.code === 'PGRST116') {
+      // Profile not found – user hasn't completed registration
+      console.log('Profile missing, redirecting to complete-profile');
+      window.location.href = 'complete-profile.html';
+      return;
+    }
+    console.error('Error fetching own profile:', profileError);
+    window.location.href = 'login.html';
+    return;
+  }
+
+  currentUser = { ...session.user, ...profile };
 
   const profileUserId = getQueryParam('userId');
   isOwnProfile = !profileUserId || profileUserId === currentUser.user_id;
   const targetId = isOwnProfile ? null : profileUserId;
 
   profileUser = await fetchProfile(targetId);
-  if (!profileUser) return;
+  if (!profileUser) return; // fetchProfile already handles errors and may redirect
 
   renderProfile();
 
