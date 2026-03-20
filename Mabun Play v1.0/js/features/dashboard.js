@@ -33,17 +33,19 @@ let state = {
 };
 
 async function fetchDashboard() {
-  try {
-    const supabase = window.supabaseClient;
-    if (!supabase) throw new Error('Supabase client not available');
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    console.error('Supabase client not available');
+    return;
+  }
 
+  try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError) throw userError;
     if (!user) throw new Error('Not authenticated');
+    console.log('Authenticated user:', user);
 
-    console.log('Logged in user:', user);
-
-    // Fetch user profile
+    // Fetch profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('username, winnings, played, rank, wallet_balance')
@@ -51,8 +53,8 @@ async function fetchDashboard() {
       .single();
 
     if (profileError) {
-      console.error('Profile fetch error:', profileError);
-    } else {
+      console.warn('Profile not found or error:', profileError);
+    } else if (profile) {
       state.user.name = profile.username;
       state.user.winnings = profile.winnings || 0;
       state.user.played = profile.played || 0;
@@ -69,16 +71,15 @@ async function fetchDashboard() {
       .maybeSingle();
 
     if (!liveError && liveQuiz) {
-      state.liveQuiz = {
-        ...state.liveQuiz,
-        id: liveQuiz.id,
-        title: liveQuiz.title,
-        prizePool: liveQuiz.prize_pool,
-        currentQuizEndsAt: liveQuiz.current_quiz_ends_at,
-        nextQuizStartsAt: liveQuiz.next_quiz_starts_at,
-        canPay: true,
-        canJoin: true,
-      };
+      state.liveQuiz.id = liveQuiz.id;
+      state.liveQuiz.title = liveQuiz.title;
+      state.liveQuiz.prizePool = liveQuiz.prize_pool;
+      state.liveQuiz.currentQuizEndsAt = liveQuiz.current_quiz_ends_at;
+      state.liveQuiz.nextQuizStartsAt = liveQuiz.next_quiz_starts_at;
+      state.liveQuiz.canPay = true;
+      state.liveQuiz.canJoin = true;
+    } else {
+      console.log('No active hourly quiz found');
     }
 
     // Fetch daily challenge
@@ -91,7 +92,7 @@ async function fetchDashboard() {
     if (!dailyError && daily) {
       state.dailyChallenge.prizePool = daily.prize_pool;
       state.dailyChallenge.payoutTime = daily.payout_time;
-      // Check if user already entered
+      // Check entry
       const { data: entry, error: entryError } = await supabase
         .from('challenge_entries')
         .select('id')
@@ -133,7 +134,7 @@ async function fetchDashboard() {
     renderAll();
     updateTimers();
   } catch (err) {
-    console.error('Dashboard error:', err);
+    console.error('Dashboard fetch error:', err);
     showModal({ title: 'Error', message: err.message || 'Could not load dashboard.', confirmText: 'OK' });
   }
 }
@@ -245,8 +246,13 @@ async function handleJoinQuiz() {
     return;
   }
 
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    await showModal({ title: 'Error', message: 'Supabase client not available.', confirmText: 'OK' });
+    return;
+  }
+
   try {
-    const supabase = window.supabaseClient;
     const { data: { user } } = await supabase.auth.getUser();
     const { data: session, error } = await supabase
       .from('quiz_sessions')
@@ -277,9 +283,14 @@ async function handleChallengeEntry(e) {
     return;
   }
 
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    await showModal({ title: 'Error', message: 'Supabase client not available.', confirmText: 'OK' });
+    return;
+  }
+
   try {
     btn.disabled = true;
-    const supabase = window.supabaseClient;
     const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from('challenge_entries')
