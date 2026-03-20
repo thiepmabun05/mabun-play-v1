@@ -45,9 +45,8 @@ async function fetchDashboard() {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError) throw userError;
     if (!user) throw new Error('Not authenticated');
-    console.log('User ID:', user.id);
 
-    // Profile query uses 'id' column
+    // Profile uses 'id' column
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('username, winnings, played, rank, wallet_balance')
@@ -89,7 +88,7 @@ async function fetchDashboard() {
         hasPaid: false,
       };
     } else {
-      // Fallback quiz (already exists)
+      // Fallback quiz (make sure this ID exists in your DB)
       state.liveQuiz = {
         id: '7c3f555e-c397-4fbb-8667-3bdd5fa23f40',
         title: 'General Knowledge Hourly',
@@ -269,17 +268,18 @@ async function handleJoinQuiz() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { count } = await supabase
+    const { count, error: countError } = await supabase
       .from('questions')
       .select('*', { count: 'exact', head: true })
       .eq('quiz_id', state.liveQuiz.id);
 
+    if (countError) throw countError;
     if (!count) {
       await showModal({ title: 'No Questions', message: 'This quiz has no questions yet.', confirmText: 'OK' });
       return;
     }
 
-    const { data: session, error } = await supabase
+    const { data: session, error: insertError } = await supabase
       .from('quiz_sessions')
       .insert({
         quiz_id: state.liveQuiz.id,
@@ -294,10 +294,10 @@ async function handleJoinQuiz() {
       .select()
       .single();
 
-    if (error) throw error;
+    if (insertError) throw insertError;
     window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${session.id}`;
   } catch (err) {
-    console.error(err);
+    console.error('Join error:', err);
     await showModal({ title: 'Join Failed', message: err.message || 'Could not join quiz.', confirmText: 'OK' });
   }
 }
