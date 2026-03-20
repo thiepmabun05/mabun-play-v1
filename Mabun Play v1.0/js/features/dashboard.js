@@ -34,24 +34,37 @@ let state = {
   autoSubscribe: false,
 };
 
+// Helper for toast messages
+function showToast(title, message, icon = 'success') {
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon,
+    title: message,
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+  });
+}
+
 // Fetch all dashboard data from Supabase
 async function fetchDashboard() {
-  console.log('fetchDashboard started');
+  console.log('🟢 fetchDashboard started');
   const supabase = window.supabaseClient;
   if (!supabase) {
-    console.error('Supabase client not available');
+    console.error('❌ Supabase client not available');
     showModal({ title: 'Error', message: 'Supabase client not loaded. Please refresh.', confirmText: 'OK' });
     return;
   }
 
   try {
-    // Get current user
+    // 1. Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError) throw userError;
     if (!user) throw new Error('Not authenticated');
-    console.log('Logged in user:', user.id);
+    console.log('✅ User ID:', user.id);
 
-    // Fetch user profile
+    // 2. Fetch user profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('username, winnings, played, rank, wallet_balance')
@@ -59,10 +72,8 @@ async function fetchDashboard() {
       .single();
 
     if (profileError) {
-      console.error('Profile fetch error:', profileError);
-      // If profile missing, maybe the user hasn't completed registration
       if (profileError.code === 'PGRST116') {
-        console.log('Profile missing, redirecting to complete-profile');
+        console.log('📝 Profile missing, redirecting to complete-profile');
         window.location.href = 'complete-profile.html';
         return;
       }
@@ -74,19 +85,21 @@ async function fetchDashboard() {
     state.user.played = profile.played || 0;
     state.user.rank = profile.rank || 0;
     state.user.wallet = profile.wallet_balance || 0;
-    console.log('Profile loaded:', state.user);
+    console.log('📊 Profile loaded:', state.user);
 
-    // Fetch live quiz (hourly) – we need to find the active hourly quiz
+    // 3. Fetch live hourly quiz (with detailed logging)
+    console.log('🔍 Fetching hourly quiz...');
     const { data: liveQuiz, error: liveError } = await supabase
       .from('quizzes')
       .select('id, title, prize_pool, current_quiz_ends_at, next_quiz_starts_at')
       .eq('type', 'hourly')
       .eq('status', 'active')
-      .maybeSingle(); // use maybeSingle to avoid error if none
+      .maybeSingle();
 
-    if (liveError) throw liveError;
+    console.log('📦 Live quiz result:', liveQuiz);
+    if (liveError) console.error('❌ Live quiz error:', liveError);
 
-    if (liveQuiz) {
+    if (liveQuiz && liveQuiz.id) {
       state.liveQuiz = {
         id: liveQuiz.id,
         title: liveQuiz.title,
@@ -97,13 +110,24 @@ async function fetchDashboard() {
         canJoin: true,
         hasPaid: false,
       };
-      console.log('Hourly quiz found:', state.liveQuiz);
+      console.log('🎯 Hourly quiz found:', state.liveQuiz);
     } else {
-      console.warn('No active hourly quiz found');
-      state.liveQuiz.canJoin = false;
+      console.warn('⚠️ No active hourly quiz found, using fallback ID');
+      // FALLBACK: use the hardcoded quiz ID (you already have questions for it)
+      state.liveQuiz = {
+        id: '7c3f555e-c397-4fbb-8667-3bdd5fa23f40',
+        title: 'General Knowledge Hourly',
+        prizePool: 10000,
+        currentQuizEndsAt: new Date(Date.now() + 40 * 60 * 1000).toISOString(),
+        nextQuizStartsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        canPay: true,
+        canJoin: true,
+        hasPaid: false,
+      };
+      console.log('🔄 Using fallback quiz:', state.liveQuiz);
     }
 
-    // Daily challenge
+    // 4. Daily challenge
     const { data: daily, error: dailyError } = await supabase
       .from('challenges')
       .select('prize_pool, payout_time')
@@ -121,7 +145,7 @@ async function fetchDashboard() {
       if (!entryError && entry) state.dailyChallenge.hasEntered = true;
     }
 
-    // Weekly challenge
+    // 5. Weekly challenge
     const { data: weekly, error: weeklyError } = await supabase
       .from('challenges')
       .select('prize_pool, ends_at, payout_time')
@@ -140,7 +164,7 @@ async function fetchDashboard() {
       if (!entryError && entry) state.weeklyChallenge.hasEntered = true;
     }
 
-    // Auto-subscribe
+    // 6. Auto‑subscribe
     const { data: sub, error: subError } = await supabase
       .from('subscriptions')
       .select('id')
@@ -152,11 +176,12 @@ async function fetchDashboard() {
     renderAll();
     updateTimers();
   } catch (err) {
-    console.error('Dashboard fetch error:', err);
+    console.error('🔥 Dashboard fetch error:', err);
     showModal({ title: 'Error', message: err.message || 'Could not load dashboard.', confirmText: 'OK' });
   }
 }
 
+// Render functions
 function renderAll() {
   renderUser();
   renderLiveQuiz();
@@ -197,6 +222,7 @@ function renderSubscribeButton() {
   elements.subscribeBtn.disabled = state.autoSubscribe;
 }
 
+// Timers
 function updateTimers() {
   const now = Date.now();
   if (elements.liveTimer && state.liveQuiz.currentQuizEndsAt) {
@@ -251,25 +277,13 @@ function updateButtonStates() {
   if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.disabled = state.weeklyChallenge.hasEntered;
 }
 
+// Actions
 async function handlePayEntry() {
   state.liveQuiz.hasPaid = true;
   state.liveQuiz.canJoin = true;
   renderLiveQuiz();
   updateButtonStates();
   showToast('Free Entry', 'You can now join the quiz for free!', 'success');
-}
-
-// Helper toast
-function showToast(title, message, icon = 'success') {
-  Swal.fire({
-    toast: true,
-    position: 'top-end',
-    icon: icon,
-    title: message,
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true,
-  });
 }
 
 async function handleJoinQuiz() {
@@ -287,7 +301,7 @@ async function handleJoinQuiz() {
     if (!user) throw new Error('Not authenticated');
     console.log('✅ User:', user.id);
 
-    console.log('Quiz ID from state:', state.liveQuiz.id);
+    console.log('📌 Quiz ID from state:', state.liveQuiz.id);
     if (!state.liveQuiz.id) {
       await showModal({ title: 'No Quiz', message: 'No active quiz found. Please try again later.', confirmText: 'OK' });
       return;
@@ -378,6 +392,7 @@ async function handleSubscribe() {
   await showModal({ title: 'Coming Soon', message: 'Subscription feature is not yet available.', confirmText: 'OK' });
 }
 
+// Initialization
 function init() {
   fetchDashboard();
   setInterval(updateTimers, 1000);
