@@ -1,28 +1,40 @@
+// js/features/login.js
 import { showModal } from '../utils/modal.js';
 import { validatePassword } from '../utils/validation.js';
 import { initPasswordToggles } from '../utils/password-toggle.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOMContentLoaded in login.js');
+
   initPasswordToggles();
 
   const form = document.getElementById('loginForm');
   const emailInput = document.getElementById('email');
   const submitBtn = document.getElementById('submitBtn');
 
-  if (!form || !emailInput || !submitBtn) {
-    console.error('Login form elements missing');
+  if (!form) {
+    console.error('❌ loginForm not found');
     return;
   }
+  if (!emailInput) console.warn('⚠️ email input not found');
+  if (!submitBtn) console.warn('⚠️ submit button not found');
 
-  // Check Supabase client availability
+  // Check Supabase client
   if (typeof window.supabaseClient === 'undefined') {
-    console.error('Supabase client not available');
-    showModal({ title: 'Error', message: 'Configuration error. Please refresh.', confirmText: 'OK' });
+    console.error('❌ Supabase client not defined');
+    showModal({
+      title: 'Configuration Error',
+      message: 'Supabase client not loaded. Please refresh or contact support.',
+      confirmText: 'OK'
+    });
     return;
   }
+  console.log('✅ Supabase client found');
 
+  // Attach submit event
   form.addEventListener('submit', async (e) => {
-    e.preventDefault();  // Prevents page refresh
+    console.log('🔵 Form submit intercepted');
+    e.preventDefault(); // Prevents page refresh
 
     const email = emailInput.value.trim();
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
@@ -46,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       if (error) throw error;
 
+      console.log('Login successful, redirecting to dashboard');
       window.location.href = 'dashboard.html';
     } catch (error) {
       console.error('Login error:', error);
@@ -58,4 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
       submitBtn.innerHTML = 'Log In <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>';
     }
   });
+
+  console.log('✅ Login event listener attached');
 });
