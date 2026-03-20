@@ -1,6 +1,6 @@
-import { supabase } from '../core/supabase.js';
+// js/features/results.js
 import { showModal } from '../utils/modal.js';
-import { formatCurrency, formatShortDate } from '../utils/formatters.js';
+import { formatCurrency } from '../utils/formatters.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const urlParams = new URLSearchParams(window.location.search);
@@ -21,6 +21,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     earnings: document.getElementById('earnings'),
     topPlayersList: document.getElementById('topPlayersList')
   };
+
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    console.error('Supabase client not available');
+    return;
+  }
 
   try {
     const { data: results, error } = await supabase
