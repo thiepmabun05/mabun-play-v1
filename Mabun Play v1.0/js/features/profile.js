@@ -3,7 +3,6 @@ import { showModal } from '../utils/modal.js';
 import { formatCurrency } from '../utils/formatters.js';
 import { getQueryParam } from '../utils/helpers.js';
 
-// DOM elements
 const elements = {
   avatarImg: document.getElementById('avatarImg'),
   avatarUploadBtn: document.getElementById('avatarUploadBtn'),
@@ -45,7 +44,6 @@ let currentUser = null;
 let isOwnProfile = false;
 let loadingSwal = null;
 
-// ========== Helper functions ==========
 function setLoading(isLoading) {
   if (isLoading) {
     loadingSwal = Swal.fire({
@@ -71,28 +69,43 @@ function showToast(title, message, icon = 'success') {
   });
 }
 
-// ========== Core data fetching ==========
-async function fetchProfile(userId = null) {
+async function fetchCurrentUser() {
   const supabase = window.supabaseClient;
   if (!supabase) return null;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+  if (error) {
+    console.error('Error fetching profile:', error);
+    return null;
+  }
+  return { ...user, ...profile };
+}
 
+async function fetchProfile(userId = null) {
   setLoading(true);
+  const supabase = window.supabaseClient;
+  if (!supabase) return null;
   try {
     if (userId) {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
       if (error) throw error;
       return data;
     } else {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', session.user.id)
+        .eq('id', user.id)
         .single();
       if (error) throw error;
       return data;
@@ -125,12 +138,11 @@ async function fetchFollowStats(userId) {
   }
 }
 
-// ========== Render UI ==========
 function renderProfile() {
   if (!profileUser) return;
 
   elements.profileName.textContent = profileUser.username;
-  elements.userIdSpan.textContent = `User ID: ${profileUser.user_id}`;
+  elements.userIdSpan.textContent = `User ID: ${profileUser.id}`;
   elements.avatarImg.src = profileUser.avatar_url || '/assets/images/default-avatar.png';
   elements.statWinnings.textContent = formatCurrency(profileUser.winnings || 0, true);
   elements.statPlayed.textContent = profileUser.played || 0;
@@ -173,7 +185,7 @@ function renderProfile() {
     }
   }
 
-  fetchFollowStats(profileUser.user_id).then(stats => {
+  fetchFollowStats(profileUser.id).then(stats => {
     elements.followersCount.textContent = stats.followers;
     elements.followingCount.textContent = stats.following;
   });
@@ -187,7 +199,6 @@ function renderProfile() {
   }
 }
 
-// ========== Logout ==========
 function addLogoutButton() {
   if (document.getElementById('logoutBtn')) return;
   const logoutBtn = document.createElement('button');
@@ -215,7 +226,6 @@ async function handleLogout() {
   }
 }
 
-// ========== Follow / Unfollow ==========
 async function handleFollow() {
   if (!currentUser || !profileUser) return;
 
@@ -230,20 +240,20 @@ async function handleFollow() {
       const { error } = await supabase
         .from('follows')
         .delete()
-        .eq('follower_id', currentUser.user_id)
-        .eq('following_id', profileUser.user_id);
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', profileUser.id);
       if (error) throw error;
     } else {
       const { error } = await supabase
         .from('follows')
-        .insert({ follower_id: currentUser.user_id, following_id: profileUser.user_id });
+        .insert({ follower_id: currentUser.id, following_id: profileUser.id });
       if (error) throw error;
     }
 
     elements.followBtn.textContent = isFollowing ? 'Follow' : 'Unfollow';
     elements.followBtn.className = isFollowing ? 'btn btn-outline' : 'btn btn-primary';
 
-    const stats = await fetchFollowStats(profileUser.user_id);
+    const stats = await fetchFollowStats(profileUser.id);
     elements.followersCount.textContent = stats.followers;
     showToast('Success', isFollowing ? 'Unfollowed' : 'Following', 'success');
   } catch (err) {
@@ -254,7 +264,6 @@ async function handleFollow() {
   }
 }
 
-// ========== Avatar Upload ==========
 async function uploadAvatar(file) {
   const supabase = window.supabaseClient;
   if (!supabase) throw new Error('Supabase client not available');
@@ -270,9 +279,30 @@ async function uploadAvatar(file) {
   const { error: updateError } = await supabase
     .from('profiles')
     .update({ avatar_url: publicUrl })
-    .eq('user_id', user.data.user.id);
+    .eq('id', user.data.user.id);
   if (updateError) throw updateError;
   return publicUrl;
+}
+
+async function updateProfileField(field, value) {
+  const supabase = window.supabaseClient;
+  if (!supabase) throw new Error('Supabase client not available');
+  try {
+    const { data: updated, error } = await supabase
+      .from('profiles')
+      .update({ [field]: value })
+      .eq('id', currentUser.id)
+      .select()
+      .single();
+    if (error) throw error;
+    profileUser = { ...profileUser, ...updated };
+    currentUser = profileUser;
+    renderProfile();
+    showToast('Success', `${field} updated!`, 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('Error', `Could not update ${field}.`, 'error');
+  }
 }
 
 function setupAvatarUpload() {
@@ -298,28 +328,6 @@ function setupAvatarUpload() {
       }
     }
   });
-}
-
-// ========== Update Profile Fields ==========
-async function updateProfileField(field, value) {
-  const supabase = window.supabaseClient;
-  if (!supabase) throw new Error('Supabase client not available');
-  try {
-    const { data: updated, error } = await supabase
-      .from('profiles')
-      .update({ [field]: value })
-      .eq('user_id', currentUser.user_id)
-      .select()
-      .single();
-    if (error) throw error;
-    profileUser = { ...profileUser, ...updated };
-    currentUser = profileUser;
-    renderProfile();
-    showToast('Success', `${field} updated!`, 'success');
-  } catch (err) {
-    console.error(err);
-    showToast('Error', `Could not update ${field}.`, 'error');
-  }
 }
 
 function setupEditUsername() {
@@ -399,7 +407,25 @@ function setupEditProfile() {
   });
 }
 
-// ========== KYC ==========
+function setupBackButton() {
+  elements.backBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.history.back();
+  });
+}
+
+function setupAchievements() {
+  elements.viewAllAchievements.addEventListener('click', (e) => {
+    e.preventDefault();
+    const userIdParam = !isOwnProfile ? `?userId=${profileUser.id}` : '';
+    window.location.href = `achievements.html${userIdParam}`;
+  });
+}
+
+function setupFollow() {
+  elements.followBtn.addEventListener('click', handleFollow);
+}
+
 async function loadKycStatus() {
   const supabase = window.supabaseClient;
   if (!supabase) return;
@@ -407,7 +433,7 @@ async function loadKycStatus() {
     const { data, error } = await supabase
       .from('kyc_submissions')
       .select('status')
-      .eq('user_id', currentUser.user_id)
+      .eq('user_id', currentUser.id)
       .single();
     if (error && error.code !== 'PGRST116') throw error;
 
@@ -496,7 +522,6 @@ function setupKycPreview() {
   }
 }
 
-// ========== Email Verification ==========
 async function checkEmailVerification() {
   const supabase = window.supabaseClient;
   if (!supabase) return;
@@ -531,27 +556,6 @@ function setupResendVerification() {
   }
 }
 
-// ========== Navigation & Helpers ==========
-function setupBackButton() {
-  elements.backBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.history.back();
-  });
-}
-
-function setupAchievements() {
-  elements.viewAllAchievements.addEventListener('click', (e) => {
-    e.preventDefault();
-    const userIdParam = !isOwnProfile ? `?userId=${profileUser.user_id}` : '';
-    window.location.href = `achievements.html${userIdParam}`;
-  });
-}
-
-function setupFollow() {
-  elements.followBtn.addEventListener('click', handleFollow);
-}
-
-// ========== Initialisation ==========
 (async function init() {
   // Wait for Supabase client
   let retries = 0;
@@ -565,41 +569,18 @@ function setupFollow() {
     return;
   }
 
-  // Check session
-  const { data: { session }, error: sessionError } = await window.supabaseClient.auth.getSession();
-  if (sessionError || !session) {
-    console.error('No active session, redirecting to login');
+  currentUser = await fetchCurrentUser();
+  if (!currentUser) {
     window.location.href = 'login.html';
     return;
   }
-
-  // Fetch profile
-  const { data: profile, error: profileError } = await window.supabaseClient
-    .from('profiles')
-    .select('*')
-    .eq('user_id', session.user.id)
-    .single();
-
-  if (profileError) {
-    if (profileError.code === 'PGRST116') {
-      // Profile not found – user hasn't completed registration
-      console.log('Profile missing, redirecting to complete-profile');
-      window.location.href = 'complete-profile.html';
-      return;
-    }
-    console.error('Error fetching own profile:', profileError);
-    window.location.href = 'login.html';
-    return;
-  }
-
-  currentUser = { ...session.user, ...profile };
 
   const profileUserId = getQueryParam('userId');
-  isOwnProfile = !profileUserId || profileUserId === currentUser.user_id;
+  isOwnProfile = !profileUserId || profileUserId === currentUser.id;
   const targetId = isOwnProfile ? null : profileUserId;
 
   profileUser = await fetchProfile(targetId);
-  if (!profileUser) return; // fetchProfile already handles errors and may redirect
+  if (!profileUser) return;
 
   renderProfile();
 
