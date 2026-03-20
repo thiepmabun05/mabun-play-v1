@@ -1,74 +1,58 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mabun Quiz – Reset Password</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
-  <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/pages/auth.css">
-  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script>
-    window.supabaseClient = window.supabase.createClient(
-      'https://iarjbnklktgcetfpayks.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlhcmpibmtsa3RnY2V0ZnBheWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5ODQ2MjAsImV4cCI6MjA4OTU2MDYyMH0.4ZS3espzqXETxwJDxFTs5mP1p2PP21B0cfQ3L8W24S8'
-    );
-  </script>
-</head>
-<body>
-  <div class="auth-page">
-    <div class="auth-bg-circle auth-bg-circle--top-right"></div>
-    <div class="auth-bg-circle auth-bg-circle--bottom-left"></div>
+// js/features/reset-password.js
+import { showModal } from '../utils/modal.js';
+import { validatePassword } from '../utils/validation.js';
+import { initPasswordToggles } from '../utils/password-toggle.js';
 
-    <header class="auth-header">
-      <a href="javascript:history.back()" class="back-btn">
-        <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
-      </a>
-      <img src="assets/images/logo.png" alt="Mabun Quiz" class="auth-logo">
-    </header>
+document.addEventListener('DOMContentLoaded', () => {
+  initPasswordToggles();
 
-    <main class="auth-main">
-      <h1 class="auth-title">Reset Password</h1>
-      <p class="auth-subtitle">Enter your new password</p>
+  // Supabase automatically handles the access_token in the URL
+  // We just need to update the user's password.
+  const form = document.getElementById('resetForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const newPassword = document.getElementById('newPassword');
+  const confirmPassword = document.getElementById('confirmPassword');
 
-      <form class="auth-form" id="resetForm">
-        <div class="form-group">
-          <label for="newPassword" class="form-label">New Password</label>
-          <div class="input-wrapper">
-            <iconify-icon icon="solar:lock-keyhole-linear" class="input-icon"></iconify-icon>
-            <input type="password" id="newPassword" class="input-field" placeholder="Min. 6 characters" required>
-            <button type="button" class="password-toggle" aria-label="Toggle password visibility">
-              <iconify-icon icon="solar:eye-closed-linear"></iconify-icon>
-            </button>
-          </div>
-        </div>
+  if (!form || !submitBtn || !newPassword || !confirmPassword) return;
 
-        <div class="form-group">
-          <label for="confirmPassword" class="form-label">Confirm Password</label>
-          <div class="input-wrapper">
-            <iconify-icon icon="solar:lock-keyhole-linear" class="input-icon"></iconify-icon>
-            <input type="password" id="confirmPassword" class="input-field" placeholder="Re‑enter password" required>
-            <button type="button" class="password-toggle" aria-label="Toggle password visibility">
-              <iconify-icon icon="solar:eye-closed-linear"></iconify-icon>
-            </button>
-          </div>
-        </div>
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-        <button type="submit" class="btn btn-primary btn-full" id="submitBtn">
-          Reset Password
-          <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>
-        </button>
-      </form>
+    const password = newPassword.value;
+    const confirm = confirmPassword.value;
 
-      <p class="auth-footer-text">
-        <a href="login.html" class="auth-link">Back to login</a>
-      </p>
-    </main>
-  </div>
+    if (!validatePassword(password)) {
+      await showModal({ title: 'Weak Password', message: 'Password must be at least 6 characters.', confirmText: 'OK' });
+      return;
+    }
+    if (password !== confirm) {
+      await showModal({ title: 'Password Mismatch', message: 'Passwords do not match.', confirmText: 'OK' });
+      return;
+    }
 
-  <script type="module" src="js/core/app.js"></script>
-  <script type="module" src="js/features/reset-password.js"></script>
-  <script type="module" src="js/utils/password-toggle.js"></script>
-</body>
-</html>
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="loader"></span> Resetting...';
+
+    try {
+      const supabase = window.supabaseClient;
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+
+      await showModal({
+        title: 'Success',
+        message: 'Password reset successfully. Please log in.',
+        confirmText: 'OK',
+      });
+      window.location.href = 'login.html';
+    } catch (error) {
+      console.error('Reset password error:', error);
+      await showModal({
+        title: 'Error',
+        message: error.message || 'Could not reset password. Please try again.',
+        confirmText: 'OK',
+      });
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Reset Password <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>';
+    }
+  });
+});
