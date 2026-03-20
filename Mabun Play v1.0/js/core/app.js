@@ -2,7 +2,13 @@
 import { setupAuthGuard } from './guards.js';
 
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
+   if ('serviceWorker' in navigator && !isLocal) {
+     window.addEventListener('load', () => {
+       navigator.serviceWorker.register('/service-worker.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+         .catch(err => console.error('Service Worker registration failed:', err));
+     });
+   }
 window.addEventListener('error', (event) => {
   console.error('Global error:', event.error);
 });
