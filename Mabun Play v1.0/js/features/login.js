@@ -14,13 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  if (!window.supabaseClient) {
-    showModal({ title: 'Error', message: 'Supabase client not loaded. Please refresh.', confirmText: 'OK' });
+  // Check Supabase client availability
+  if (typeof window.supabaseClient === 'undefined') {
+    console.error('Supabase client not available');
+    showModal({ title: 'Error', message: 'Configuration error. Please refresh.', confirmText: 'OK' });
     return;
   }
 
   form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+    e.preventDefault();  // Prevents page refresh
 
     const email = emailInput.value.trim();
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
