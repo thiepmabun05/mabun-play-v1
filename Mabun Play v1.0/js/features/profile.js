@@ -1,9 +1,7 @@
-import { supabase } from '../core/supabase.js';
 import { showModal } from '../utils/modal.js';
 import { formatCurrency } from '../utils/formatters.js';
 import { getQueryParam } from '../utils/helpers.js';
 
-// DOM elements
 const elements = {
   avatarImg: document.getElementById('avatarImg'),
   avatarUploadBtn: document.getElementById('avatarUploadBtn'),
@@ -71,18 +69,17 @@ function showToast(title, message, icon = 'success') {
 }
 
 async function fetchCurrentUser() {
+  const supabase = window.supabaseClient;
+  if (!supabase) return null;
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    window.location.href = '/login.html';
-    return null;
-  }
+  if (!session) return null;
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('user_id', session.user.id)
     .single();
   if (error) {
-    console.error('Error fetching current user:', error);
+    console.error('Error fetching current user profile:', error);
     return null;
   }
   return { ...session.user, ...profile };
@@ -90,6 +87,8 @@ async function fetchCurrentUser() {
 
 async function fetchProfile(userId = null) {
   setLoading(true);
+  const supabase = window.supabaseClient;
+  if (!supabase) return null;
   try {
     if (userId) {
       const { data, error } = await supabase
@@ -125,6 +124,8 @@ async function fetchProfile(userId = null) {
 }
 
 async function fetchFollowStats(userId) {
+  const supabase = window.supabaseClient;
+  if (!supabase) return { followers: 0, following: 0 };
   try {
     const { data, error } = await supabase
       .rpc('get_follow_stats', { user_id: userId });
@@ -218,7 +219,8 @@ async function handleLogout() {
     cancelButtonText: 'Cancel',
   });
   if (result.isConfirmed) {
-    await supabase.auth.signOut();
+    const supabase = window.supabaseClient;
+    if (supabase) await supabase.auth.signOut();
     window.location.href = 'login.html';
   }
 }
@@ -227,22 +229,23 @@ async function handleFollow() {
   if (!currentUser || !profileUser) return;
 
   const isFollowing = elements.followBtn.textContent === 'Unfollow';
-  const method = isFollowing ? 'DELETE' : 'POST';
+  const supabase = window.supabaseClient;
+  if (!supabase) return;
 
   elements.followBtn.disabled = true;
 
   try {
-    if (method === 'POST') {
-      const { error } = await supabase
-        .from('follows')
-        .insert({ follower_id: currentUser.user_id, following_id: profileUser.user_id });
-      if (error) throw error;
-    } else {
+    if (isFollowing) {
       const { error } = await supabase
         .from('follows')
         .delete()
         .eq('follower_id', currentUser.user_id)
         .eq('following_id', profileUser.user_id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('follows')
+        .insert({ follower_id: currentUser.user_id, following_id: profileUser.user_id });
       if (error) throw error;
     }
 
@@ -261,6 +264,8 @@ async function handleFollow() {
 }
 
 async function uploadAvatar(file) {
+  const supabase = window.supabaseClient;
+  if (!supabase) throw new Error('Supabase client not available');
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error('Not authenticated');
   const fileExt = file.name.split('.').pop();
@@ -279,6 +284,8 @@ async function uploadAvatar(file) {
 }
 
 async function updateProfileField(field, value) {
+  const supabase = window.supabaseClient;
+  if (!supabase) throw new Error('Supabase client not available');
   try {
     const { data: updated, error } = await supabase
       .from('profiles')
@@ -297,7 +304,7 @@ async function updateProfileField(field, value) {
   }
 }
 
-async function setupAvatarUpload() {
+function setupAvatarUpload() {
   elements.avatarUploadBtn.addEventListener('click', async () => {
     const { value: file } = await Swal.fire({
       title: 'Upload Profile Picture',
@@ -322,7 +329,7 @@ async function setupAvatarUpload() {
   });
 }
 
-async function setupEditUsername() {
+function setupEditUsername() {
   elements.editUsernameLink.addEventListener('click', async (e) => {
     e.preventDefault();
     const { value: newUsername } = await Swal.fire({
@@ -342,7 +349,7 @@ async function setupEditUsername() {
   });
 }
 
-async function setupEditEmail() {
+function setupEditEmail() {
   elements.editEmailLink.addEventListener('click', async (e) => {
     e.preventDefault();
     const { value: newEmail } = await Swal.fire({
@@ -362,7 +369,7 @@ async function setupEditEmail() {
   });
 }
 
-async function setupEditProfile() {
+function setupEditProfile() {
   elements.editProfileBtn.addEventListener('click', async () => {
     const { value: formValues } = await Swal.fire({
       title: 'Edit Profile',
@@ -419,6 +426,8 @@ function setupFollow() {
 }
 
 async function loadKycStatus() {
+  const supabase = window.supabaseClient;
+  if (!supabase) return;
   try {
     const { data, error } = await supabase
       .from('kyc_submissions')
@@ -459,10 +468,8 @@ async function submitKyc(e) {
     return;
   }
 
-  const formData = new FormData();
-  formData.append('fullName', fullName);
-  formData.append('idNumber', idNumber);
-  formData.append('idDocument', file);
+  const supabase = window.supabaseClient;
+  if (!supabase) return;
 
   elements.submitKycBtn.disabled = true;
   elements.submitKycBtn.innerHTML = '<span class="loader"></span> Submitting...';
@@ -515,6 +522,8 @@ function setupKycPreview() {
 }
 
 async function checkEmailVerification() {
+  const supabase = window.supabaseClient;
+  if (!supabase) return;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user.email && !user.email_confirmed_at && elements.emailVerificationBanner) {
@@ -530,6 +539,8 @@ async function checkEmailVerification() {
 function setupResendVerification() {
   if (elements.resendVerificationBtn) {
     elements.resendVerificationBtn.addEventListener('click', async () => {
+      const supabase = window.supabaseClient;
+      if (!supabase) return;
       try {
         const { error } = await supabase.auth.resend({
           type: 'signup',
@@ -546,7 +557,10 @@ function setupResendVerification() {
 
 (async function init() {
   currentUser = await fetchCurrentUser();
-  if (!currentUser) return;
+  if (!currentUser) {
+    window.location.href = 'login.html';
+    return;
+  }
 
   const profileUserId = getQueryParam('userId');
   isOwnProfile = !profileUserId || profileUserId === currentUser.user_id;
