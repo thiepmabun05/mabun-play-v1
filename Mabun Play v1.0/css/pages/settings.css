@@ -1,0 +1,142 @@
+/* ============================================
+   settings.css – Settings Page
+   ============================================ */
+
+/* Main content container */
+.settings-main {
+  flex: 1;
+  padding: var(--space-m) var(--space-m) calc(var(--bottom-nav-height) + var(--space-l)) var(--space-m);
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  margin-bottom: var(--space-l);
+}
+
+/* Settings group */
+.settings-group {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-m);
+  overflow: hidden;
+}
+
+.settings-group-title {
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted-foreground);
+  padding: var(--space-m) var(--space-m) var(--space-xs);
+  margin: 0;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-m);
+  border-top: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.2s;
+}
+.settings-item:first-child {
+  border-top: none;
+}
+.settings-item:hover {
+  background-color: var(--muted);
+}
+
+.settings-item-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+.settings-item-left iconify-icon {
+  font-size: 20px;
+  color: var(--primary);
+}
+
+.settings-value {
+  font-size: var(--text-sm);
+  color: var(--muted-foreground);
+  margin-right: var(--space-xs);
+}
+
+.settings-arrow {
+  color: var(--muted-foreground);
+  font-size: 18px;
+}
+
+/* Toggle switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 26px;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--muted);
+  transition: 0.2s;
+  border-radius: 34px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.2s;
+  border-radius: 50%;
+}
+input:checked + .slider {
+  background-color: var(--primary);
+}
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+/* Version info */
+.version-info {
+  text-align: center;
+  margin-top: var(--space-xl);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 359px) {
+  .settings-main {
+    padding-left: var(--space-s);
+    padding-right: var(--space-s);
+  }
+  .settings-item-left {
+    font-size: var(--text-xs);
+  }
+  .settings-value {
+    font-size: var(--text-xs);
+  }
+}

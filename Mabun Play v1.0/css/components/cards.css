@@ -1,0 +1,80 @@
+/* Base card */
+.card {
+  background-color: var(--white);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-m);
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s;
+}
+
+/* Quiz card (used in dashboard) */
+.quiz-card {
+  position: relative;
+  overflow: hidden;
+  border-left: 4px solid var(--primary);
+}
+
+.quiz-card .badge {
+  position: absolute;
+  top: var(--spacing-s);
+  right: var(--spacing-s);
+  background-color: var(--primary);
+  color: white;
+  padding: 2px var(--spacing-xs);
+  border-radius: 12px;
+  font-size: var(--font-caption);
+  font-weight: 600;
+}
+
+.quiz-card .badge.hourly { background-color: var(--info); }
+.quiz-card .badge.daily { background-color: var(--success); }
+.quiz-card .badge.weekly { background-color: var(--warning); color: #000; }
+
+/* Wallet card */
+.wallet-card {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: white;
+}
+
+.wallet-card .balance {
+  font-size: 2rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+/* Leaderboard card */
+.leaderboard-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-m);
+  padding: var(--spacing-s) var(--spacing-m);
+}
+
+.leaderboard-card .rank {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--primary);
+  min-width: 40px;
+}
+
+.leaderboard-card .player-info {
+  flex: 1;
+}
+
+.leaderboard-card .points {
+  font-weight: 600;
+  color: var(--success);
+}
+
+/* Prize card */
+.prize-card {
+  text-align: center;
+  background: linear-gradient(145deg, #fafafa, #f0f0f0);
+}
+
+.prize-card .amount {
+  font-size: 2rem;
+  font-weight: 800;
+  color: gold;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}

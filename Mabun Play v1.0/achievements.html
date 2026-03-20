@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Achievements</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Iconify Icons -->
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+
+  <!-- Master CSS -->
+  <link rel="stylesheet" href="css/main.css">
+
+  <!-- Page-specific CSS -->
+  <link rel="stylesheet" href="css/pages/achievements.css">
+
+  <style>
+    .bottom-spacer{
+      height:120px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="app-layout">
+
+    <!-- Sidebar Navigation -->
+       <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
+        <span>Home</span>
+      </a>
+     <a href="community.html" class="nav-item">
+  <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+  <span>Community</span>
+</a>
+      <a href="leaderboard.html" class="nav-item">
+        <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
+        <span>Rank</span>
+      </a>
+      <a href="wallet.html" class="nav-item">
+        <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
+        <span>Wallet</span>
+      </a>
+      <a href="profile.html" class="nav-item">
+        <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
+        <span>Profile</span>
+      </a>
+      <a href="settings.html" class="nav-item">
+  <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+  <span>Settings</span>
+</a>
+    </nav>
+
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Header -->
+      <header class="app-bar">
+
+        <div class="app-bar-left">
+          <a href="profile.html" class="back-btn">
+            <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+          </a>
+        </div>
+
+        <h1 class="app-bar-title">Achievements</h1>
+
+        <div class="app-bar-right">
+          <a href="notifications.html" class="notification-btn" aria-label="Notifications">
+            <iconify-icon icon="solar:bell-linear"></iconify-icon>
+            <span class="notification-dot"></span>
+          </a>
+
+          <a href="profile.html" class="profile-avatar" aria-label="Profile">
+            <iconify-icon icon="solar:user-circle-linear"></iconify-icon>
+          </a>
+        </div>
+
+      </header>
+
+
+
+      <!-- Achievements Content -->
+      <div class="achievements-container">
+
+        <!-- Header with ring progress -->
+        <div class="achievements-header">
+
+          <div class="completion-ring">
+            <svg viewBox="0 0 120 120" class="ring-svg">
+
+              <circle class="ring-bg"
+                cx="60"
+                cy="60"
+                r="54"
+                fill="none"
+                stroke="var(--border)"
+                stroke-width="8">
+              </circle>
+
+              <circle class="ring-progress"
+                cx="60"
+                cy="60"
+                r="54"
+                fill="none"
+                stroke="var(--primary)"
+                stroke-width="8"
+                stroke-linecap="round"
+                stroke-dasharray="339.3"
+                stroke-dashoffset="339.3"
+                transform="rotate(-90 60 60)">
+              </circle>
+
+            </svg>
+
+            <div class="ring-text">
+              <span class="ring-percent" id="completionPercent">0%</span>
+              <span class="ring-label">Completed</span>
+            </div>
+
+          </div>
+
+
+
+          <div class="stats-cards">
+
+            <div class="stat-card">
+              <span class="stat-value" id="unlockedCount">0</span>
+              <span class="stat-label">Unlocked</span>
+            </div>
+
+            <div class="stat-card">
+              <span class="stat-value" id="totalCount">0</span>
+              <span class="stat-label">Total</span>
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- Achievements Grid -->
+        <div class="achievements-grid" id="achievementsGrid">
+          <!-- Filled by JS -->
+        </div>
+
+
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner" id="loadingSpinner" style="display: none;">
+          <iconify-icon icon="solar:spinner-bold" class="spin"></iconify-icon>
+        </div>
+
+
+
+        <!-- Bottom Spacer -->
+        <div class="bottom-spacer"></div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <!-- JavaScript -->
+  <script type="module" src="js/features/achievements.js"></script>
+
+</body>
+</html>

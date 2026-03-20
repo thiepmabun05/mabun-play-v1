@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Settings</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/pages/settings.css">
+
+  <style>
+    .bottom-spacer{
+      height:120px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-layout">
+
+    <!-- Sidebar Navigation -->
+        <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
+        <span>Home</span>
+      </a>
+     <a href="community.html" class="nav-item">
+  <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+  <span>Community</span>
+</a>
+      <a href="leaderboard.html" class="nav-item">
+        <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
+        <span>Rank</span>
+      </a>
+      <a href="wallet.html" class="nav-item">
+        <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
+        <span>Wallet</span>
+      </a>
+      <a href="profile.html" class="nav-item">
+        <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
+        <span>Profile</span>
+      </a>
+      <a href="settings.html" class="nav-item">
+  <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+  <span>Settings</span>
+</a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Header -->
+      <header class="app-bar">
+        <div class="app-bar-left">
+          <a href="profile.html" class="back-btn">
+            <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+          </a>
+        </div>
+
+        <h1 class="app-bar-title">Settings</h1>
+
+        <div class="app-bar-right">
+          <a href="notifications.html" class="notification-btn" aria-label="Notifications">
+            <iconify-icon icon="solar:bell-linear"></iconify-icon>
+            <span class="notification-dot"></span>
+          </a>
+
+          <a href="profile.html" class="profile-avatar" aria-label="Profile">
+            <iconify-icon icon="solar:user-circle-linear"></iconify-icon>
+          </a>
+        </div>
+      </header>
+
+      <!-- Settings Container -->
+      <div class="settings-container">
+
+        <!-- Account -->
+        <h2 class="settings-group-title">Account</h2>
+
+        <div class="settings-group">
+          <a href="#" class="settings-item" id="editProfile">
+            <div class="settings-item-left">
+              <iconify-icon icon="solar:user-rounded-linear"></iconify-icon>
+              <span>Edit Profile</span>
+            </div>
+            <iconify-icon icon="solar:alt-arrow-right-linear" class="settings-arrow"></iconify-icon>
+          </a>
+
+          <a href="#" class="settings-item" id="changePassword">
+            <div class="settings-item-left">
+              <iconify-icon icon="solar:lock-keyhole-linear"></iconify-icon>
+              <span>Change Password</span>
+            </div>
+            <iconify-icon icon="solar:alt-arrow-right-linear" class="settings-arrow"></iconify-icon>
+          </a>
+
+          <a href="#" class="settings-item" id="linkedAccounts">
+            <div class="settings-item-left">
+              <iconify-icon icon="solar:smartphone-linear"></iconify-icon>
+              <span>Linked Mobile Money</span>
+            </div>
+
+            <span class="settings-value" id="linkedPhone">—</span>
+
+            <iconify-icon icon="solar:alt-arrow-right-linear" class="settings-arrow"></iconify-icon>
+          </a>
+        </div>
+
+        <!-- Notifications -->
+        <h2 class="settings-group-title">Notifications</h2>
+
+        <div class="settings-group">
+
+          <div class="settings-item">
+            <div class="settings-item-left">
+              <iconify-icon icon="solar:bell-linear"></iconify-icon>
+              <span>Push Notifications</span>
+            </div>
+
+            <label class="switch">
+              <input type="checkbox" id="pushNotifications" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="settings-item">
+            <div class="settings-item-left">
+              <iconify-icon icon="solar:alarm-linear"></iconify-icon>
+              <span>Quiz Reminders</span>
+            </div>
+
+            <label class="switch">
+              <input type="checkbox" id="quizReminders" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="settings-item">
+            <div class="settings-item-left">
+              <iconify-icon icon="solar:gift-linear"></iconify-icon>
+              <span>Promotions & Offers</span>
+            </div>
+
+            <label class="switch">
+              <input type="checkbox" id="promotions">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+        </div>
+
+        <!-- Support -->
+        <h2 class="settings-group-title">Support</h2>
+
+        <div class="settings-group">
+
+          <a href="#" class="settings-item" id="helpCenter">
+            <div class="settings-item-left">
+              <iconify-icon icon="solar:question-circle-linear"></iconify-icon>
+              <span>Help Center</span>
+            </div>
+            <iconify-icon icon="solar:alt-arrow-right-linear" class="settings-arrow"></iconify-icon>
+          </a>
+
+          <a href="#" class="settings-item" id="contactSupport">
+            <div class="settings-item-left">
+              <iconify-icon icon="solar:chat-linear"></iconify-icon>
+              <span>Contact Support</span>
+            </div>
+            <iconify-icon icon="solar:alt-arrow-right-linear" class="settings-arrow"></iconify-icon>
+          </a>
+
+          <a href="#" class="settings-item" id="terms">
+            <div class="settings-item-left">
+              <iconify-icon icon="solar:document-linear"></iconify-icon>
+              <span>Terms & Privacy</span>
+            </div>
+            <iconify-icon icon="solar:alt-arrow-right-linear" class="settings-arrow"></iconify-icon>
+          </a>
+
+        </div>
+
+        <!-- Version Info -->
+        <div class="version-info">
+          <p>Mabun Play v1.0.0</p>
+          <p>© 2026 Mabun Play. All rights reserved.</p>
+        </div>
+
+        <!-- Bottom Space to Avoid Navigation Cover -->
+        <div class="bottom-spacer"></div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+    <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <script type="module" src="js/features/settings.js"></script>
+
+</body>
+</html>

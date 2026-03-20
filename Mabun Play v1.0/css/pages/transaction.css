@@ -1,0 +1,213 @@
+/* ============================================
+   transaction.css – Shared styles for deposit/withdraw pages
+   Uses design tokens from variables.css (via main.css)
+   ============================================ */
+
+/* ----- Transaction Container ----- */
+.transaction-container {
+  padding: var(--space-m);
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-l);
+}
+
+/* ----- Form Card ----- */
+.form-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-l);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.form-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  margin-bottom: var(--space-l);
+  color: var(--foreground);
+}
+
+/* ----- Form Groups ----- */
+.form-group {
+  margin-bottom: var(--space-l);
+}
+
+.form-label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--foreground);
+  margin-bottom: var(--space-xs);
+}
+
+/* Amount input with currency symbol */
+.amount-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.form-input {
+  width: 100%;
+  padding: var(--space-m);
+  padding-right: 70px; /* space for currency symbol */
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  color: var(--foreground);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.form-input::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+
+.currency-symbol {
+  position: absolute;
+  right: var(--space-m);
+  color: var(--muted-foreground);
+  font-weight: var(--font-medium);
+  pointer-events: none;
+}
+
+/* Select dropdown */
+.form-select {
+  width: 100%;
+  padding: var(--space-m);
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  color: var(--foreground);
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right var(--space-m) center;
+  background-size: 1.2em;
+  cursor: pointer;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* Hint text */
+.form-hint {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  margin-top: var(--space-xs);
+}
+
+/* ----- Form Actions (buttons) ----- */
+.form-actions {
+  display: flex;
+  gap: var(--space-m);
+  margin-top: var(--space-l);
+}
+
+.form-actions .btn {
+  flex: 1;
+  height: 48px;
+  font-size: var(--text-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+}
+
+/* ----- Quick Amount Buttons ----- */
+.quick-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-s);
+}
+
+.quick-amount-btn {
+  padding: var(--space-s);
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.quick-amount-btn:hover {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+/* ----- Dynamic Fields (for withdrawal methods) ----- */
+.dynamic-field {
+  margin-top: var(--space-m);
+  padding: var(--space-m);
+  background-color: var(--muted);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--primary);
+}
+
+.dynamic-field .form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* ----- Bottom Spacer (ensures content doesn't stick to bottom) ----- */
+.bottom-spacer {
+  height: 120px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* ----- Responsive Design ----- */
+@media (max-width: 480px) {
+  .quick-amounts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+
+  .transaction-container {
+    padding: var(--space-s);
+  }
+
+  .form-card {
+    padding: var(--space-m);
+  }
+
+  .bottom-spacer {
+    height: 80px;
+  }
+}
+
+@media (min-width: 768px) {
+  .transaction-container {
+    max-width: 700px;
+  }
+}
+
+.bottom-space {
+  height: 80px; /* adjust according to navbar or floating button height */
+}

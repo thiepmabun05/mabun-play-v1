@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Live Quiz</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <!-- Iconify Icons -->
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+  <!-- Master CSS (includes reset, variables, layout, components) -->
+  <link rel="stylesheet" href="css/main.css">
+  <!-- Page-specific CSS -->
+  <link rel="stylesheet" href="css/pages/quiz.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation (becomes bottom bar on mobile) -->
+        <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
+        <span>Home</span>
+      </a>
+     <a href="community.html" class="nav-item">
+  <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+  <span>Community</span>
+</a>
+      <a href="leaderboard.html" class="nav-item">
+        <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
+        <span>Rank</span>
+      </a>
+      <a href="wallet.html" class="nav-item">
+        <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
+        <span>Wallet</span>
+      </a>
+      <a href="profile.html" class="nav-item">
+        <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
+        <span>Profile</span>
+      </a>
+      <a href="settings.html" class="nav-item">
+  <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+  <span>Settings</span>
+</a>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Quiz Header (sticky within main) -->
+      <header class="quiz-header">
+        <div class="header-left">
+          <button class="icon-btn" id="quitQuiz">
+            <iconify-icon icon="solar:close-circle-linear"></iconify-icon>
+          </button>
+          <img src="assets/images/logo.png" alt="Mabun Quiz" class="quiz-logo">
+        </div>
+        <div class="header-center">
+          <h1 class="quiz-title" id="quizTitle">—</h1>
+        </div>
+        <div class="header-right">
+          <span class="question-counter" id="questionCounter">0/0</span>
+          <div class="timer-circle" id="timerCircle">
+            <svg viewBox="0 0 40 40" class="timer-svg">
+              <circle class="timer-bg" cx="20" cy="20" r="18" fill="none" stroke="var(--border)" stroke-width="2.5"></circle>
+              <circle class="timer-progress" cx="20" cy="20" r="18" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="0" transform="rotate(-90 20 20)"></circle>
+            </svg>
+            <span class="timer-text" id="timerText">0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Quiz Content -->
+      <div class="quiz-container">
+        <!-- Question Card -->
+        <div class="question-card">
+          <div class="difficulty-indicator">
+            <span class="difficulty-label">Difficulty</span>
+            <div class="difficulty-stars" id="difficultyStars">
+              <iconify-icon icon="solar:star-bold" class="star"></iconify-icon>
+              <iconify-icon icon="solar:star-bold" class="star"></iconify-icon>
+              <iconify-icon icon="solar:star-bold" class="star"></iconify-icon>
+            </div>
+          </div>
+          <p class="question-text" id="questionText">—</p>
+        </div>
+
+        <!-- Answer Options -->
+        <div class="options-grid" id="optionsGrid">
+          <button class="option-btn" data-option="A">
+            <span class="option-letter">A</span>
+            <span class="option-text"></span>
+          </button>
+          <button class="option-btn" data-option="B">
+            <span class="option-letter">B</span>
+            <span class="option-text"></span>
+          </button>
+          <button class="option-btn" data-option="C">
+            <span class="option-letter">C</span>
+            <span class="option-text"></span>
+          </button>
+          <button class="option-btn" data-option="D">
+            <span class="option-letter">D</span>
+            <span class="option-text"></span>
+          </button>
+        </div>
+
+        <!-- Bottom Bar: Streak & Score -->
+        <div class="quiz-footer">
+          <div class="streak-box">
+            <iconify-icon icon="solar:fire-bold" class="streak-icon"></iconify-icon>
+            <span class="streak-count" id="streakCount">0</span>
+          </div>
+          <div class="score-box">
+            <span class="score-label">Score</span>
+            <span class="score-value" id="scoreValue">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quit Quiz Modal -->
+      <div class="modal-overlay" id="quitModal">
+        <div class="modal-container">
+          <h3 class="modal-title">Quit Quiz?</h3>
+          <p class="modal-text">Your progress will be lost.</p>
+          <div class="modal-actions">
+            <button class="btn btn-outline" id="cancelQuit">Cancel</button>
+            <a href="dashboard.html" class="btn btn-primary">Quit</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+    <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <!-- External JavaScript -->
+  <script type="module" src="js/features/quiz.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,416 @@
+/* ============================================
+   responsive.css
+   Mobile-First Responsive Enhancements
+   ============================================ */
+
+/* ---------- Base Mobile (default) ---------- */
+/* Already defined in core layout, but we ensure containers are fluid */
+.container {
+  width: 100%;
+  max-width: 100%;
+  padding-left: var(--space-m);
+  padding-right: var(--space-m);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Typography adjustments for very small screens */
+@media (max-width: 359px) {
+  :root {
+    /* Slightly reduce font sizes on tiny phones */
+    --text-xs: 0.7rem;
+    --text-sm: 0.8rem;
+    --text-base: 0.95rem;
+    --text-lg: 1rem;
+    --text-xl: 1.15rem;
+    --text-2xl: 1.35rem;
+    --text-3xl: 1.5rem;
+    --text-4xl: 1.8rem;
+  }
+
+  h1 { font-size: var(--text-3xl); }
+  h2 { font-size: var(--text-2xl); }
+  h3 { font-size: var(--text-xl); }
+
+  .btn {
+    height: 52px; /* slightly smaller */
+    font-size: var(--text-base);
+  }
+
+  .wallet-badge {
+    padding: 4px 10px;
+    font-size: var(--text-xs);
+  }
+}
+
+/* ---------- Small Phones ( < 360px ) ---------- */
+@media (max-width: 359px) {
+  .stats-grid {
+    gap: var(--space-xs);
+  }
+
+  .stat-item {
+    padding: var(--space-s);
+  }
+
+  .leaderboard-item {
+    padding: var(--space-s);
+    gap: var(--space-s);
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+    font-size: var(--text-sm);
+  }
+
+  .rank-medal iconify-icon {
+    font-size: 24px;
+  }
+
+  .bottom-nav .nav-item span {
+    font-size: 9px;
+  }
+}
+
+/* ---------- Large Phones (360px - 767px) ---------- */
+@media (min-width: 360px) and (max-width: 767px) {
+  .container {
+    max-width: 480px; /* comfortable reading width */
+  }
+
+  /* Slightly larger touch targets */
+  .btn, .btn-icon, .nav-item {
+    min-height: 48px;
+  }
+
+  /* Two-column cards? Not yet, but improve spacing */
+  .stats-grid {
+    gap: var(--space-m);
+  }
+}
+
+/* ---------- Tablets (768px - 1023px) ---------- */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root {
+    /* Increase base font size for tablets */
+    --text-base: 1.125rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.5rem;
+    --text-2xl: 1.75rem;
+    --text-3xl: 2rem;
+    --text-4xl: 2.5rem;
+  }
+
+  .container {
+    max-width: 720px;
+  }
+
+  /* Dashboard: cards can be side by side */
+  .flex.flex-col.gap-m {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-m);
+  }
+
+  /* The live card can span full width if needed */
+  .card-live {
+    grid-column: span 2;
+  }
+
+  /* Statistics grid remains 3 columns but larger */
+  .stats-grid {
+    gap: var(--space-m);
+  }
+
+  /* Leaderboard: show more entries, larger avatars */
+  .leaderboard-list {
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .leaderboard-item {
+    padding: var(--space-m) var(--space-l);
+  }
+
+  .avatar {
+    width: 56px;
+    height: 56px;
+    font-size: var(--text-lg);
+  }
+
+  /* Bottom navigation: maybe center and limit width */
+  .bottom-nav {
+    max-width: 600px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 9999px;
+    bottom: var(--space-m);
+    width: auto;
+    padding: var(--space-xs) var(--space-s);
+  }
+
+  .bottom-nav .nav-item {
+    padding: var(--space-xs) var(--space-m);
+    flex-direction: row;
+    gap: var(--space-xs);
+  }
+
+  .bottom-nav .nav-item span {
+    font-size: var(--text-xs);
+  }
+
+  /* Notifications page: two columns? Maybe keep single but wider */
+  .notification-item {
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* ---------- Desktops (1024px and above) ---------- */
+@media (min-width: 1024px) {
+  :root {
+    /* Desktop font sizes */
+    --text-base: 1.125rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.5rem;
+    --text-2xl: 1.875rem;
+    --text-3xl: 2.25rem;
+    --text-4xl: 2.5rem;
+
+    /* Increase spacing */
+    --space-m: 20px;
+    --space-l: 28px;
+    --space-xl: 40px;
+  }
+
+  .container {
+    max-width: 960px;
+  }
+
+  /* Dashboard: three columns */
+  .flex.flex-col.gap-m {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-l);
+  }
+
+  .card-live {
+    grid-column: span 3;
+  }
+
+  /* Bottom navigation: fixed at bottom center, more compact */
+  .bottom-nav {
+    max-width: 500px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 9999px;
+    bottom: var(--space-m);
+    width: auto;
+    padding: var(--space-xs) var(--space-s);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  }
+
+  .bottom-nav .nav-item {
+    flex-direction: row;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-m);
+  }
+
+  /* Leaderboard full width with more entries */
+  .leaderboard-list {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .leaderboard-item {
+    padding: var(--space-m) var(--space-l);
+  }
+
+  /* Auth pages: center forms */
+  .auth-form {
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+
+  .auth-footer {
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Notifications: maybe two columns? */
+  .flex-1.px-l {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-l);
+    align-items: start;
+  }
+
+  .flex-1.px-l > div {
+    margin-bottom: 0;
+  }
+
+  /* Empty state spans both columns */
+  .flex-1.px-l .flex.flex-col.items-center {
+    grid-column: span 2;
+  }
+}
+
+/* ---------- Large Desktops (≥1440px) ---------- */
+@media (min-width: 1440px) {
+  .container {
+    max-width: 1200px;
+  }
+
+  .flex.flex-col.gap-m {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .card-live {
+    grid-column: span 4;
+  }
+}
+
+/* ---------- Landscape Orientation on Mobile ---------- */
+@media (max-height: 480px) and (orientation: landscape) {
+  .bottom-nav {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  .auth-header {
+    padding-top: var(--space-m);
+  }
+
+  .auth-form {
+    padding-top: var(--space-m);
+  }
+
+  /* Reduce vertical spacing */
+  .mt-xl, .auth-title {
+    margin-top: var(--space-m);
+  }
+}
+
+/* ---------- Safe Area Inserts for Notched Phones ---------- */
+@supports (padding: max(0px)) {
+  .bottom-nav {
+    padding-bottom: max(var(--space-s), env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-bar {
+    padding-top: max(var(--space-m), env(safe-area-inset-top, 0px));
+  }
+
+  .auth-header {
+    padding-top: max(var(--space-xl), env(safe-area-inset-top, 0px));
+  }
+}
+
+/* ---------- Accessibility: High Contrast ---------- */
+@media (prefers-contrast: high) {
+  :root {
+    --primary: #000080; /* darker, more contrast */
+    --primary-light: #0000a0;
+    --border: #000000;
+    --muted-foreground: #222222;
+    --card: #ffffff;
+    --background: #ffffff;
+  }
+
+  .btn-outline {
+    border-width: 3px;
+  }
+
+  .card, .leaderboard-item, .notification-item {
+    border-width: 2px;
+  }
+}
+
+/* ---------- Accessibility: Reduced Motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .btn:hover {
+    transform: none !important;
+  }
+}
+
+/* ---------- Print Styles (for receipts etc.) ---------- */
+@media print {
+  .bottom-nav,
+  .btn,
+  .app-bar .btn-icon {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  .card {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+}
+
+/* ============================================
+   Global Layout Fix for Scrollable Content
+   Prevents content from being hidden behind bottom nav
+   ============================================ */
+
+/* Ensure the app layout takes full viewport height */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Main content area – flexible, scrollable, with bottom padding on mobile */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* smooth iOS scrolling */
+  padding-bottom: 0; /* default no padding */
+}
+
+/* On mobile (when bottom nav is visible), add bottom padding */
+@media (max-width: 767px) {
+  .main-content {
+    padding-bottom: calc(var(--bottom-nav-height) + var(--space-xl) + env(safe-area-inset-bottom));
+  }
+}
+
+/* Ensure bottom nav is fixed and above content */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: var(--bottom-nav-height, 80px);
+  background-color: var(--card);
+  border-top: 1px solid var(--border);
+  z-index: 50;
+  /* other styles as needed */
+}
+
+/* On desktop, hide bottom nav (sidebar takes over) – if you have a sidebar */
+@media (min-width: 768px) {
+  .bottom-nav {
+    display: none;
+  }
+}

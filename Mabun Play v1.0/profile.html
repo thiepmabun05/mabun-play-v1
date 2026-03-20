@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Profile</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- SweetAlert2 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Iconify Icons -->
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/pages/profile.css">
+
+  <style>
+    .bottom-spacer{
+      height:120px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-layout">
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
+        <span>Home</span>
+      </a>
+      <a href="community.html" class="nav-item">
+        <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+        <span>Community</span>
+      </a>
+      <a href="leaderboard.html" class="nav-item">
+        <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
+        <span>Rank</span>
+      </a>
+      <a href="wallet.html" class="nav-item">
+        <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
+        <span>Wallet</span>
+      </a>
+      <a href="profile.html" class="nav-item active">
+        <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
+        <span>Profile</span>
+      </a>
+      <a href="settings.html" class="nav-item">
+        <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+        <span>Settings</span>
+      </a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Header -->
+      <header class="app-bar">
+        <div class="app-bar-left">
+          <button class="back-btn" id="backBtn">
+            <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+          </button>
+        </div>
+        <h1 class="app-bar-title">Profile</h1>
+        <div class="app-bar-right">
+          <a href="notifications.html" class="notification-btn" aria-label="Notifications">
+            <iconify-icon icon="solar:bell-linear"></iconify-icon>
+            <span class="notification-dot"></span>
+          </a>
+          <a href="settings.html" class="profile-avatar" aria-label="Settings">
+            <iconify-icon icon="solar:settings-linear"></iconify-icon>
+          </a>
+        </div>
+      </header>
+
+      <!-- Profile Header -->
+      <div class="profile-header">
+        <div class="header-glow"></div>
+        <div class="avatar-container">
+          <div class="avatar-ring">
+            <img src="assets/images/default-avatar.png" alt="Profile" class="avatar-img" id="avatarImg">
+          </div>
+          <button class="avatar-upload" id="avatarUploadBtn" aria-label="Upload new avatar" style="display: none;">
+            <iconify-icon icon="solar:camera-add-bold"></iconify-icon>
+          </button>
+        </div>
+        <h1 class="profile-name" id="profileName">—</h1>
+        <div class="user-id-badge">
+          <iconify-icon icon="solar:shield-check-bold-duotone"></iconify-icon>
+          <span id="userId">User ID: —</span>
+        </div>
+
+        <!-- Follow Stats -->
+        <div class="follow-stats">
+          <div class="follow-stat">
+            <span class="follow-count" id="followersCount">—</span>
+            <span class="follow-label">Followers</span>
+          </div>
+          <div class="follow-stat">
+            <span class="follow-count" id="followingCount">—</span>
+            <span class="follow-label">Following</span>
+          </div>
+        </div>
+
+        <!-- Follow Button -->
+        <button class="btn btn-outline" id="followBtn" style="display: none;">Follow</button>
+      </div>
+
+      <!-- Email Verification Banner -->
+      <div id="emailVerificationBanner" class="verification-banner" style="display: none;">
+        <iconify-icon icon="solar:letter-bold"></iconify-icon>
+        <span>Your email is not verified. <button id="resendVerificationBtn" class="link-btn">Resend verification email</button></span>
+      </div>
+
+      <!-- Main Profile Content -->
+      <div class="profile-main">
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon winnings">
+              <iconify-icon icon="solar:wallet-money-bold-duotone"></iconify-icon>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Winnings</span>
+              <span class="stat-value" id="statWinnings">—</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon played">
+              <iconify-icon icon="solar:play-circle-bold-duotone"></iconify-icon>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Played</span>
+              <span class="stat-value" id="statPlayed">—</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon rank">
+              <iconify-icon icon="solar:cup-bold-duotone"></iconify-icon>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Rank</span>
+              <span class="stat-value" id="statRank">#—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Achievements -->
+        <section class="achievements-section">
+          <div class="section-header">
+            <h3 class="section-title">Achievements</h3>
+            <a href="achievements.html" class="view-all-link" id="viewAllAchievements">
+              View All
+              <iconify-icon icon="solar:alt-arrow-right-linear"></iconify-icon>
+            </a>
+          </div>
+          <div class="achievements-scroll" id="achievementsList"></div>
+        </section>
+
+        <!-- Account Details -->
+        <section class="account-section">
+          <h3 class="section-title">Account Details</h3>
+          <div class="account-list">
+            <a href="#" class="account-item" id="editUsername" style="display: none;">
+              <div class="item-icon">
+                <iconify-icon icon="solar:user-rounded-bold-duotone"></iconify-icon>
+              </div>
+              <div class="item-content">
+                <span class="item-label">Username</span>
+                <span class="item-value" id="accountUsername">—</span>
+              </div>
+              <iconify-icon icon="solar:alt-arrow-right-linear" class="item-arrow"></iconify-icon>
+            </a>
+            <div class="account-item" id="usernameDisplay" style="display: flex;">
+              <div class="item-icon">
+                <iconify-icon icon="solar:user-rounded-bold-duotone"></iconify-icon>
+              </div>
+              <div class="item-content">
+                <span class="item-label">Username</span>
+                <span class="item-value" id="displayUsername">—</span>
+              </div>
+            </div>
+            <a href="#" class="account-item" id="editEmail" style="display: none;">
+              <div class="item-icon">
+                <iconify-icon icon="solar:letter-bold-duotone"></iconify-icon>
+              </div>
+              <div class="item-content">
+                <span class="item-label">Email</span>
+                <span class="item-value" id="accountEmail">—</span>
+              </div>
+              <iconify-icon icon="solar:alt-arrow-right-linear" class="item-arrow"></iconify-icon>
+            </a>
+            <div class="account-item" id="emailDisplay" style="display: flex;">
+              <div class="item-icon">
+                <iconify-icon icon="solar:letter-bold-duotone"></iconify-icon>
+              </div>
+              <div class="item-content">
+                <span class="item-label">Email</span>
+                <span class="item-value" id="displayEmail">—</span>
+              </div>
+            </div>
+            <div class="account-item" style="cursor: default;">
+              <div class="item-icon momo">
+                <iconify-icon icon="solar:smartphone-bold-duotone"></iconify-icon>
+              </div>
+              <div class="item-content">
+                <span class="item-label">Mobile Money</span>
+                <span class="item-value" id="accountPhone">—</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- KYC Verification Section -->
+        <section class="kyc-section">
+          <h3 class="section-title">Identity Verification (KYC)</h3>
+          <div id="kycStatus" class="kyc-status"></div>
+          <form id="kycForm" class="kyc-form" style="display: none;">
+            <div class="form-group">
+              <label for="fullName" class="form-label">Full Name (as on ID)</label>
+              <input type="text" id="fullName" class="input-field" required>
+            </div>
+            <div class="form-group">
+              <label for="idNumber" class="form-label">ID Number</label>
+              <input type="text" id="idNumber" class="input-field" required>
+            </div>
+            <div class="form-group">
+              <label for="idDocument" class="form-label">Upload ID Document (image)</label>
+              <input type="file" id="idDocument" class="input-field" accept="image/*" required>
+              <div id="uploadPreview" class="upload-preview"></div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="submitKycBtn">Submit Verification</button>
+          </form>
+        </section>
+
+        <!-- Edit Profile -->
+        <div class="edit-profile-container" id="editProfileContainer" style="display: none;">
+          <button class="btn btn-primary btn-full" id="editProfileBtn">
+            <iconify-icon icon="solar:settings-minimalistic-bold-duotone"></iconify-icon>
+            Edit Profile
+          </button>
+        </div>
+
+        <!-- Bottom Spacer -->
+        <div class="bottom-spacer"></div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <!-- Page JavaScript -->
+  <script type="module" src="js/features/profile.js"></script>
+</body>
+</html>

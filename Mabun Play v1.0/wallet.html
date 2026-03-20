@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Wallet</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/pages/wallet.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+        <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
+        <span>Home</span>
+      </a>
+     <a href="community.html" class="nav-item">
+  <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+  <span>Community</span>
+</a>
+      <a href="leaderboard.html" class="nav-item">
+        <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
+        <span>Rank</span>
+      </a>
+      <a href="wallet.html" class="nav-item">
+        <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
+        <span>Wallet</span>
+      </a>
+      <a href="profile.html" class="nav-item">
+        <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
+        <span>Profile</span>
+      </a>
+      <a href="settings.html" class="nav-item">
+  <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+  <span>Settings</span>
+</a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="app-bar">
+        <div class="app-bar-left">
+          <a href="dashboard.html" class="back-btn">
+            <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+          </a>
+        </div>
+        <h1 class="app-bar-title">Wallet</h1>
+        <div class="app-bar-right">
+          <a href="notifications.html" class="notification-btn" aria-label="Notifications">
+            <iconify-icon icon="solar:bell-linear"></iconify-icon>
+            <span class="notification-dot"></span>
+          </a>
+          <a href="profile.html" class="profile-avatar" aria-label="Profile">
+            <iconify-icon icon="solar:user-circle-linear"></iconify-icon>
+          </a>
+        </div>
+      </header>
+
+      <!-- Wallet Content -->
+      <div class="wallet-container">
+        <!-- Balance Card -->
+        <div class="balance-card">
+          <div class="balance-header">
+            <span class="balance-label">Wallet Balance</span>
+            <span class="balance-cap">Max 50,000,000 SSP</span>
+          </div>
+          <div class="balance-amount" id="walletBalance">—</div>
+          <div class="balance-progress">
+            <div class="progress-bar" id="balanceProgress" style="width: 0%;"></div>
+          </div>
+          <div class="balance-warning" id="balanceWarning"></div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="action-buttons">
+          <a href="deposit.html" class="btn btn-primary" id="depositBtn">
+            <iconify-icon icon="solar:card-recive-bold"></iconify-icon>
+            Deposit
+          </a>
+          <a href="withdraw.html" class="btn btn-outline" id="withdrawBtn">
+            <iconify-icon icon="solar:card-send-bold"></iconify-icon>
+            Withdraw
+          </a>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="transactions-card">
+          <div class="transactions-header">
+            <h2 class="transactions-title">Transaction History</h2>
+            <div class="transaction-filters">
+              <button class="filter-btn active" data-filter="all">All</button>
+              <button class="filter-btn" data-filter="deposit">Deposits</button>
+              <button class="filter-btn" data-filter="withdrawal">Withdrawals</button>
+              <button class="filter-btn" data-filter="quiz">Quiz Fees</button>
+            </div>
+          </div>
+
+          <div class="transactions-list" id="transactionsList">
+            <!-- Transactions will be inserted here by JS -->
+          </div>
+
+          <a href="transactions.html" class="view-all-link">View All Transactions</a>
+        </div>
+
+        <!-- Auto‑Topup Reminder (hidden by default) -->
+        <div class="topup-reminder" id="topupReminder">
+          <div class="reminder-icon">
+            <iconify-icon icon="solar:wallet-money-bold"></iconify-icon>
+          </div>
+          <div class="reminder-content">
+            <h3 class="reminder-title">Low Balance</h3>
+            <p class="reminder-text">Your balance is below 5,000 SSP. Top up to continue playing.</p>
+          </div>
+          <button class="btn btn-sm btn-primary" id="quickTopupBtn">Top Up</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+    <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <script type="module" src="js/features/wallet.js"></script>
+</body>
+</html>

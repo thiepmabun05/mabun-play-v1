@@ -1,0 +1,425 @@
+/* ============================================
+   landing.css – Perfect Landing Page Styles
+   ============================================ */
+
+/* Main container */
+.landing-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  padding: var(--space-m);
+  overflow: hidden;
+}
+
+/* Background decorative circles */
+.landing-bg-circle {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.landing-bg-circle--top-right {
+  top: -96px;
+  right: -96px;
+  width: 288px;
+  height: 288px;
+  background-color: var(--secondary);
+  opacity: 0.7;
+}
+
+.landing-bg-circle--bottom-left {
+  top: 50%;
+  left: -128px;
+  width: 320px;
+  height: 320px;
+  background-color: rgba(104, 0, 128, 0.05);
+  transform: translateY(-50%);
+}
+
+/* Header */
+.landing-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: var(--space-xl);
+  padding-bottom: var(--space-xs);
+  position: relative;
+  z-index: 10;
+}
+
+.landing-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  background-color: var(--primary);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 8px rgba(104, 0, 128, 0.2);
+}
+
+.logo-icon iconify-icon {
+  color: var(--primary-foreground);
+  font-size: 20px;
+}
+
+.landing-header h1 {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-extrabold);
+  color: var(--primary);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.landing-tagline {
+  font-size: var(--text-sm);
+  color: var(--muted-foreground);
+  font-weight: var(--font-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: var(--space-xs);
+}
+
+/* Hero Section */
+.landing-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-top: var(--space-xl);
+  position: relative;
+  z-index: 10;
+}
+
+.hero-title {
+  font-size: 42px;
+  line-height: 1.1;
+  font-weight: 900;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.hero-highlight {
+  color: var(--primary);
+}
+
+.hero-subtitle {
+  font-size: var(--text-base);
+  color: var(--muted-foreground);
+  margin-top: var(--space-m);
+  max-width: 280px;
+  font-weight: var(--font-medium);
+}
+
+/* Illustration Area */
+.landing-illustration {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  min-height: 280px;
+  margin: var(--space-l) 0;
+  z-index: 10;
+}
+
+/* Main trophy card */
+.trophy-card {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 192px;
+  height: 192px;
+  background-color: var(--card);
+  border-radius: 50%;
+  box-shadow: 0 20px 40px rgba(104, 0, 128, 0.1);
+  border: 8px solid var(--background);
+}
+
+.trophy-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--secondary) 0%, transparent 100%);
+  opacity: 0.5;
+}
+
+.trophy-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 128px;
+  height: 128px;
+  background-color: rgba(104, 0, 128, 0.1);
+  border-radius: 50%;
+  position: relative;
+}
+
+.trophy-icon {
+  font-size: 80px;
+  color: var(--primary);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
+.sparkle-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 24px;
+  color: var(--warning);
+}
+
+/* Floating coins */
+.coin {
+  position: absolute;
+  border-radius: 50%;
+  box-shadow: 0 8px 16px rgba(255, 193, 7, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid var(--background);
+  z-index: 30;
+}
+
+.coin--left {
+  top: 24px;
+  left: 16px;
+  width: 64px;
+  height: 64px;
+  background-color: var(--warning);
+  transform: rotate(-12deg);
+}
+
+.coin--right {
+  bottom: 40px;
+  right: 8px;
+  width: 56px;
+  height: 56px;
+  background-color: var(--warning);
+  transform: rotate(12deg);
+}
+
+.coin iconify-icon {
+  color: var(--card);
+  font-size: 32px;
+}
+
+.coin--right iconify-icon {
+  font-size: 28px;
+}
+
+/* Decorative dots */
+.dot {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.dot--1 {
+  top: 25%;
+  right: 40px;
+  width: 12px;
+  height: 12px;
+  background-color: rgba(104, 0, 128, 0.3);
+}
+
+.dot--2 {
+  bottom: 25%;
+  left: 32px;
+  width: 8px;
+  height: 8px;
+  background-color: rgba(255, 193, 7, 0.5);
+}
+
+.dot--3 {
+  top: 50%;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  background-color: var(--muted-foreground);
+  opacity: 0.3;
+}
+
+/* ===== BUTTON STYLES (from components/buttons.css) ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-s);
+  border-radius: var(--radius-md);
+  font-weight: var(--font-bold);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0 var(--space-l);
+  height: 56px;
+  font-size: var(--text-lg);
+  white-space: nowrap;
+  border: none;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 4px 14px rgba(104, 0, 128, 0.25);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-light);
+  transform: scale(0.98);
+}
+
+.btn-primary:active {
+  transform: scale(0.96);
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 2px solid var(--primary);
+  color: var(--primary);
+}
+
+.btn-outline:hover {
+  background-color: rgba(104, 0, 128, 0.05);
+}
+
+.btn-full {
+  width: 100%;
+}
+/* ===== END BUTTON STYLES ===== */
+
+/* Action Buttons container */
+.landing-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-m);
+  margin-top: auto;
+  z-index: 10;
+  padding-bottom: var(--space-xl);
+}
+
+/* Footer */
+.landing-footer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: var(--space-xs);
+  z-index: 10;
+}
+
+.footer-divider {
+  width: 100%;
+  height: 1px;
+  background-color: var(--border);
+  opacity: 0.6;
+  margin-bottom: var(--space-m);
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-m);
+}
+
+.footer-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color 0.2s;
+}
+
+.footer-link:hover {
+  color: var(--primary);
+}
+
+.footer-link iconify-icon {
+  font-size: 24px;
+}
+
+.footer-powered {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  opacity: 0.8;
+  font-weight: var(--font-semibold);
+}
+
+/* Responsive adjustments */
+@media (max-width: 359px) {
+  .hero-title {
+    font-size: 36px;
+  }
+  .coin--left {
+    width: 48px;
+    height: 48px;
+    top: 16px;
+    left: 8px;
+  }
+  .coin--right {
+    width: 40px;
+    height: 40px;
+  }
+  .trophy-card {
+    width: 160px;
+    height: 160px;
+  }
+  .trophy-inner {
+    width: 104px;
+    height: 104px;
+  }
+  .trophy-icon {
+    font-size: 60px;
+  }
+}
+
+@media (min-width: 768px) {
+  .landing-page {
+    padding: var(--space-l);
+  }
+  .hero-title {
+    font-size: 56px;
+  }
+  .hero-subtitle {
+    max-width: 400px;
+  }
+  .trophy-card {
+    width: 240px;
+    height: 240px;
+  }
+  .trophy-inner {
+    width: 160px;
+    height: 160px;
+  }
+  .trophy-icon {
+    font-size: 100px;
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "name": "Mabun Quiz",
+  "short_name": "Mabun Quiz",
+  "description": "Win real money with South Sudan's premier quiz app",
+  "start_url": "/dashboard.html",
+  "display": "standalone",
+  "background_color": "#f6f6f6",
+  "theme_color": "#680080",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Play Quiz",
+      "short_name": "Quiz",
+      "description": "Join the next live quiz",
+      "url": "/quiz.html",
+      "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Leaderboard",
+      "short_name": "Rank",
+      "description": "See top players",
+      "url": "/leaderboard.html",
+      "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["entertainment", "games"],
+  "screenshots": [
+    {
+      "src": "/assets/screenshots/dashboard.jpg",
+      "sizes": "1080x1920",
+      "type": "image/jpeg"
+    }
+  ]
+}

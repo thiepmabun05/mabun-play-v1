@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Dashboard</title>
+  <!-- Google Fonts & Iconify -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+  <!-- Font Awesome (for auto‑subscribe icon) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <!-- Main CSS -->
+  <link rel="stylesheet" href="css/main.css">
+  <!-- Dashboard specific CSS -->
+  <link rel="stylesheet" href="css/pages/dashboard.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+        <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
+        <span>Home</span>
+      </a>
+     <a href="community.html" class="nav-item">
+  <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+  <span>Community</span>
+</a>
+      <a href="leaderboard.html" class="nav-item">
+        <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
+        <span>Rank</span>
+      </a>
+      <a href="wallet.html" class="nav-item">
+        <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
+        <span>Wallet</span>
+      </a>
+      <a href="profile.html" class="nav-item">
+        <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
+        <span>Profile</span>
+      </a>
+      <a href="settings.html" class="nav-item">
+  <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+  <span>Settings</span>
+</a>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Sticky App Bar -->
+      <header class="app-bar">
+        <img src="assets/images/logo.png" alt="Mabun Quiz" class="app-logo">
+        <div class="app-bar-actions">
+          <!-- Wallet Badge -->
+          <a href="wallet.html" class="wallet-badge" aria-label="Wallet balance">
+            <iconify-icon icon="solar:wallet-bold"></iconify-icon>
+            <span id="wallet-amount">0.00</span>
+          </a>
+          <!-- Notifications -->
+          <a href="notifications.html" class="notification-btn" aria-label="Notifications">
+            <iconify-icon icon="solar:bell-linear"></iconify-icon>
+            <span class="notification-dot"></span>
+          </a>
+          <!-- Profile Avatar -->
+          <a href="profile.html" class="profile-avatar" aria-label="Profile">
+            <iconify-icon icon="solar:user-circle-linear"></iconify-icon>
+          </a>
+        </div>
+      </header>
+
+      <!-- Dashboard Content -->
+      <div class="dashboard-main">
+        <!-- Greeting Section -->
+        <section class="greeting-section">
+          <h2 class="greeting-title">Welcome back, <span id="user-name">User</span>!</h2>
+          <p class="greeting-subtitle">Ready to win today?</p>
+        </section>
+
+        <!-- Four Entry Tiers -->
+        <div class="cards-container">
+          <!-- 1. Hourly Quiz (Live) -->
+          <div class="card-live">
+            <div class="card-live-header">
+              <span class="live-badge" aria-label="Live now">
+                <span class="live-dot"></span> Live Now
+              </span>
+              <span class="timer-badge" aria-live="polite" aria-label="Time remaining">
+                <iconify-icon icon="solar:clock-circle-linear"></iconify-icon>
+                <span id="live-timer">00:00</span>
+              </span>
+            </div>
+            <h3 class="card-live-title" id="live-quiz-title">General Knowledge</h3>
+            <div class="prize-info">
+              <iconify-icon icon="solar:money-bag-bold"></iconify-icon>
+              <span>Prize Pool: <strong><span id="hourly-prize">0</span> SSP</strong></span>
+              <span class="live-prize-indicator">
+                <span class="live-prize-dot"></span> Live
+              </span>
+            </div>
+            <div class="entry-fee">Entry Fee: <strong>1,000 SSP</strong></div>
+            <div class="next-quiz-info">
+              <iconify-icon icon="solar:clock-circle-linear"></iconify-icon>
+              <span>Next quiz in <span id="next-quiz-timer">00:00</span></span>
+            </div>
+            <!-- Two‑step action buttons -->
+            <div class="hourly-actions">
+              <button class="btn btn-pay" id="pay-entry-fee" aria-label="Pay entry fee">Pay Entry Fee</button>
+              <button class="btn btn-live-join" id="join-hourly-quiz" disabled aria-label="Join quiz">Join Now</button>
+            </div>
+          </div>
+
+          <!-- 2. Daily Challenge -->
+          <div class="challenge-card accent-daily">
+            <div class="challenge-header">
+              <div class="challenge-icon daily">
+                <iconify-icon icon="solar:calendar-date-bold"></iconify-icon>
+              </div>
+              <span class="challenge-badge">Daily</span>
+            </div>
+            <h3 class="challenge-title">Mega Jackpot Challenge</h3>
+            <div class="prize-info">
+              <iconify-icon icon="solar:calendar-linear"></iconify-icon>
+              <span>Today, <span id="today-date">March 1, 2026</span></span>
+            </div>
+            <div class="prize-info">
+              <iconify-icon icon="solar:clock-circle-linear"></iconify-icon>
+              <span>Payout at 11:05 PM (<span id="daily-payout-countdown">00:00:00</span>)</span>
+            </div>
+            <div class="prize-info">
+              <iconify-icon icon="solar:money-bag-bold"></iconify-icon>
+              <span>Prize Pool: <strong><span id="daily-prize">0</span> SSP</strong></span>
+              <span class="live-prize-indicator">
+                <span class="live-prize-dot"></span> Live
+              </span>
+            </div>
+            <div class="entry-fee">Entry Fee: <strong>2,000 SSP</strong></div>
+            <button class="btn-outline js-challenge-entry" data-challenge="daily" data-fee="2000" role="button">Enter Challenge</button>
+          </div>
+
+          <!-- 3. Weekly Challenge -->
+          <div class="challenge-card accent-weekly">
+            <div class="challenge-header">
+              <div class="challenge-icon weekly">
+                <iconify-icon icon="solar:star-fall-bold"></iconify-icon>
+              </div>
+              <span class="challenge-badge">Weekly</span>
+            </div>
+            <h3 class="challenge-title">Ultimate Trivia Week</h3>
+            <div class="prize-info">
+              <iconify-icon icon="solar:hourglass-linear"></iconify-icon>
+              <span>Ends in <span id="weekly-countdown">0d 00:00:00</span></span>
+            </div>
+            <div class="prize-info">
+              <iconify-icon icon="solar:clock-circle-linear"></iconify-icon>
+              <span>Payout at 11:05 PM Sun (<span id="weekly-payout-countdown">00:00:00</span>)</span>
+            </div>
+            <div class="prize-info">
+              <iconify-icon icon="solar:money-bag-bold"></iconify-icon>
+              <span>Prize Pool: <strong><span id="weekly-prize">0</span> SSP</strong></span>
+              <span class="live-prize-indicator">
+                <span class="live-prize-dot"></span> Live
+              </span>
+            </div>
+            <div class="entry-fee">Entry Fee: <strong>3,000 SSP</strong></div>
+            <button class="btn-outline js-challenge-entry" data-challenge="weekly" data-fee="3000" role="button">Enter Challenge</button>
+          </div>
+
+          <!-- 4. Daily Auto-Subscribe -->
+          <div class="challenge-card accent-subscribe">
+            <div class="challenge-header">
+              <div class="challenge-icon subscribe">
+                <i class="fas fa-infinity"></i>
+              </div>
+              <span class="challenge-badge">Auto</span>
+            </div>
+            <h3 class="challenge-title">Daily Auto‑Subscribe</h3>
+            <div class="prize-info subscribe">
+              <iconify-icon icon="solar:calendar-mark-bold"></iconify-icon>
+              <span>All daily quizzes, auto‑enter</span>
+            </div>
+            <div class="entry-fee">Fee: <strong>15,000 SSP / day</strong></div>
+            <button class="btn-outline" id="subscribe-btn">Subscribe Now</button>
+          </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <section class="stats-section">
+          <h3 class="stats-title">Your Statistics</h3>
+          <div class="stats-grid">
+            <a href="history.html" class="stat-item" aria-label="Quizzes played">
+              <div class="stat-icon played">
+                <iconify-icon icon="solar:history-bold"></iconify-icon>
+              </div>
+              <div class="stat-value" id="stat-played-value">0</div>
+              <div class="stat-label">Played</div>
+            </a>
+            <a href="wallet.html" class="stat-item" aria-label="Total winnings">
+              <div class="stat-icon winnings">
+                <iconify-icon icon="solar:wallet-money-bold"></iconify-icon>
+              </div>
+              <div class="stat-value" id="stat-winnings-value">0</div>
+              <div class="stat-label">Winnings</div>
+            </a>
+            <a href="leaderboard.html" class="stat-item" aria-label="Current rank">
+              <div class="stat-icon rank">
+                <iconify-icon icon="solar:medal-star-bold"></iconify-icon>
+              </div>
+              <div class="stat-value" id="stat-rank-value">#0</div>
+              <div class="stat-label">Rank</div>
+            </a>
+          </div>
+        </section>
+      </div> <!-- end dashboard-main -->
+    </main>
+  </div> <!-- end app-layout -->
+
+    <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <!-- JavaScript (ES module) -->
+  <script type="module" src="js/features/dashboard.js"></script>
+</body>
+</html>

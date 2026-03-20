@@ -1,0 +1,88 @@
+/* Base button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-s) var(--spacing-l);
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  font-size: var(--font-body);
+  line-height: 1;
+  text-align: center;
+  transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+  cursor: pointer;
+  border: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled,
+.btn.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Primary button */
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-light);
+  box-shadow: 0 4px 12px rgba(104, 0, 128, 0.3);
+}
+
+/* Outline button */
+.btn-outline {
+  background-color: transparent;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-outline:hover {
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+/* Secondary (gray) */
+.btn-secondary {
+  background-color: #e0e0e0;
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+  background-color: #d0d0d0;
+}
+
+/* Small button */
+.btn-small {
+  padding: var(--spacing-xs) var(--spacing-m);
+  font-size: var(--font-small);
+}
+
+/* Large button */
+.btn-large {
+  padding: var(--spacing-m) var(--spacing-xl);
+  font-size: 1.125rem;
+}
+
+/* Block button */
+.btn-block {
+  width: 100%;
+}
+
+/* Icon button */
+.btn-icon {
+  padding: var(--spacing-s);
+  border-radius: 50%;
+  aspect-ratio: 1;
+}
+
+.btn-icon span {
+  display: none; /* hide text if any */
+}

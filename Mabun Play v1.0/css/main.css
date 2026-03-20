@@ -1,0 +1,61 @@
+@import url('core/reset.css');
+@import url('core/variables.css');
+@import url('core/typography.css');
+@import url('core/layout.css');
+@import url('components/buttons.css');
+@import url('components/forms.css');
+@import url('components/cards.css');
+@import url('components/modals.css');
+@import url('components/loaders.css');
+@import url('components/toasts.css');
+@import url('pages/auth.css');
+@import url('pages/dashboard.css');
+@import url('pages/leaderboard.css');
+@import url('pages/notifications.css');
+@import url('pages/quiz.css');
+@import url('pages/wallet.css');
+@import url('pages/profile.css');
+@import url('pages/community.css');
+@import url('pages/settings.css');
+@import url('responsive.css');
+/* Pages */
+@import url('pages/landing.css');
+@import url('pages/history.css');
+@import url('pages/info-pages.css');
+@import url('pages/results.css');
+@import url('pages/achievements.css');
+@import url('pages/transactions.css');
+@import url('pages/transaction.css');
+
+/* Make the app bar fixed at the top */
+.app-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 50;
+  background-color: rgba(var(--background-rgb), 0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-m);
+  box-sizing: border-box;
+}
+
+/* Add top padding to main content to prevent overlap */
+.main-content {
+  padding-top: 64px; /* same as app-bar height */
+}
+
+/* On desktop, if sidebar is present, adjust its top position */
+@media (min-width: 768px) {
+  .sidebar-nav {
+    top: 64px;
+    height: calc(100vh - 64px);
+  }
+}
+
+

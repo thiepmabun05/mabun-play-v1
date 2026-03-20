@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Linked Accounts</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    .bottom-spacer { height: 120px; }
+    .linked-accounts-container {
+      max-width: 600px;
+      margin: var(--space-l) auto;
+      padding: var(--space-l);
+    }
+    .account-card {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      padding: var(--space-l);
+      margin-bottom: var(--space-l);
+      box-shadow: var(--shadow-md);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .account-info {
+      display: flex;
+      align-items: center;
+      gap: var(--space-m);
+    }
+    .account-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--secondary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    .account-details h3 {
+      margin-bottom: var(--space-xs);
+    }
+    .account-details p {
+      color: var(--muted-foreground);
+      font-size: var(--text-sm);
+    }
+    .coming-soon-badge {
+      background: var(--warning);
+      color: #000;
+      padding: var(--space-xs) var(--space-s);
+      border-radius: 20px;
+      font-size: var(--text-xs);
+      font-weight: var(--font-bold);
+    }
+    .info-text {
+      text-align: center;
+      margin-top: var(--space-xl);
+      color: var(--muted-foreground);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
+        <span>Home</span>
+      </a>
+      <a href="community.html" class="nav-item">
+        <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+        <span>Community</span>
+      </a>
+      <a href="leaderboard.html" class="nav-item">
+        <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
+        <span>Rank</span>
+      </a>
+      <a href="wallet.html" class="nav-item">
+        <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
+        <span>Wallet</span>
+      </a>
+      <a href="profile.html" class="nav-item">
+        <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
+        <span>Profile</span>
+      </a>
+      <a href="settings.html" class="nav-item">
+        <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+        <span>Settings</span>
+      </a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="app-bar">
+        <div class="app-bar-left">
+          <a href="settings.html" class="back-btn">
+            <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+          </a>
+        </div>
+        <h1 class="app-bar-title">Linked Accounts</h1>
+        <div class="app-bar-right">
+          <a href="notifications.html" class="notification-btn" aria-label="Notifications">
+            <iconify-icon icon="solar:bell-linear"></iconify-icon>
+            <span class="notification-dot"></span>
+          </a>
+          <a href="profile.html" class="profile-avatar" aria-label="Profile">
+            <iconify-icon icon="solar:user-circle-linear"></iconify-icon>
+          </a>
+        </div>
+      </header>
+
+      <!-- Linked Accounts Content -->
+      <div class="linked-accounts-container">
+        <div class="account-card" id="mtnAccount">
+          <div class="account-info">
+            <div class="account-icon" style="background: rgba(0,100,0,0.1); color: #006400;">
+              <iconify-icon icon="solar:smartphone-bold"></iconify-icon>
+            </div>
+            <div class="account-details">
+              <h3>MTN Mobile Money</h3>
+              <p id="mtnPhone">—</p>
+            </div>
+          </div>
+          <span class="coming-soon-badge">Coming Soon</span>
+        </div>
+
+        <div class="account-card" id="digitelAccount">
+          <div class="account-info">
+            <div class="account-icon" style="background: rgba(0,100,100,0.1); color: #006666;">
+              <iconify-icon icon="solar:smartphone-bold"></iconify-icon>
+            </div>
+            <div class="account-details">
+              <h3>Digitel DigiCash</h3>
+              <p id="digitelPhone">—</p>
+            </div>
+          </div>
+          <span class="coming-soon-badge">Coming Soon</span>
+        </div>
+
+        <div class="info-text">
+          <iconify-icon icon="solar:info-circle-linear"></iconify-icon>
+          <p>Account linking and management will be available when payment integration is complete.</p>
+        </div>
+        <div class="bottom-spacer"></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="js/core/app.js"></script>
+  <script type="module" src="js/features/linked-accounts.js"></script>
+</body>
+</html>

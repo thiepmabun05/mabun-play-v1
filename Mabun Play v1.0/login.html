@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/pages/auth.css">
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-bg-circle auth-bg-circle--top-right"></div>
+    <div class="auth-bg-circle auth-bg-circle--bottom-left"></div>
+
+    <header class="auth-header">
+      <img src="assets/images/logo.png" alt="Mabun Quiz" class="auth-logo">
+    </header>
+
+    <main class="auth-main">
+      <h1 class="auth-title">Login</h1>
+      <p class="auth-subtitle">Enter your phone number and password</p>
+
+      <form class="auth-form" id="loginForm">
+        <!-- Phone -->
+        <div class="form-group">
+          <label for="phone" class="form-label">Phone Number</label>
+          <div class="input-wrapper">
+            <span class="input-prefix">+211</span>
+            <input type="tel" id="phone" name="phone" class="input-field" 
+                   placeholder="9XX XXX XXX" pattern="^(9[28]\d{7})$" required>
+          </div>
+          <div class="phone-hint" id="phoneHint">
+            <iconify-icon icon="solar:check-circle-bold" class="hint-icon"></iconify-icon>
+            <span class="hint-text">MTN or Digitel</span>
+            <span class="provider-badge" id="providerBadge"></span>
+          </div>
+        </div>
+
+        <!-- Password with toggle -->
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <div class="input-wrapper">
+            <iconify-icon icon="solar:lock-keyhole-linear" class="input-icon"></iconify-icon>
+            <input type="password" id="password" class="input-field" placeholder="••••••••" required>
+            <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+              <iconify-icon icon="solar:eye-closed-linear"></iconify-icon>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full" id="submitBtn">
+          Log In
+          <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>
+        </button>
+      </form>
+
+      <div class="auth-links">
+        <a href="forgot-password.html" class="auth-link">Forgot password?</a>
+        <span class="separator">•</span>
+        <a href="register.html" class="auth-link">Create account</a>
+      </div>
+    </main>
+  </div>
+
+  <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <!-- Scripts -->
+  <script type="module" src="js/utils/password-toggle.js"></script>
+  <script type="module" src="js/features/login.js"></script>
+</body>
+</html>

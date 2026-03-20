@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Play – Community</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/pages/community.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
+        <span>Home</span>
+      </a>
+      <a href="community.html" class="nav-item">
+        <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+        <span>Community</span>
+      </a>
+      <a href="leaderboard.html" class="nav-item">
+        <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
+        <span>Rank</span>
+      </a>
+      <a href="wallet.html" class="nav-item">
+        <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
+        <span>Wallet</span>
+      </a>
+      <a href="profile.html" class="nav-item">
+        <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
+        <span>Profile</span>
+      </a>
+      <a href="settings.html" class="nav-item">
+        <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+        <span>Settings</span>
+      </a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="app-bar">
+        <div class="app-bar-left">
+          <a href="dashboard.html" class="back-btn">
+            <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+          </a>
+        </div>
+        <h1 class="app-bar-title">Community</h1>
+        <div class="app-bar-right">
+          <a href="notifications.html" class="notification-btn" aria-label="Notifications">
+            <iconify-icon icon="solar:bell-linear"></iconify-icon>
+            <span class="notification-dot"></span>
+          </a>
+          <a href="profile.html" class="profile-avatar" aria-label="Profile">
+            <iconify-icon icon="solar:user-circle-linear"></iconify-icon>
+          </a>
+        </div>
+      </header>
+
+      <!-- Community Content -->
+      <div class="community-container">
+        <!-- Create Post Card -->
+        <div class="create-post-card">
+          <div class="create-post-header">
+            <img src="assets/images/default-avatar.png" alt="Your avatar" class="post-avatar">
+            <input type="text" class="post-input" id="postInput" placeholder="Share something with the community...">
+          </div>
+          <div class="create-post-actions">
+            <label for="postImageUpload" class="post-action-btn" id="uploadImageLabel">
+              <iconify-icon icon="solar:gallery-bold"></iconify-icon>
+              <span>Photo</span>
+              <input type="file" id="postImageUpload" accept="image/*" style="display: none;">
+            </label>
+            <!-- FIXED: set type="button" to prevent accidental form submission -->
+            <button type="button" class="post-action-btn" id="createPostBtn">
+              <iconify-icon icon="solar:plain-bold"></iconify-icon>
+              <span>Post</span>
+            </button>
+          </div>
+          <div id="imagePreview" class="image-preview" style="display: none;">
+            <img src="" alt="Preview">
+            <button type="button" id="removeImageBtn">&times;</button>
+          </div>
+        </div>
+
+        <!-- Feed Tabs -->
+        <div class="feed-tabs">
+          <button class="feed-tab active" data-feed="latest">Latest</button>
+          <button class="feed-tab" data-feed="trending">Trending</button>
+          <button class="feed-tab" data-feed="following">Following</button>
+        </div>
+
+        <!-- Posts Feed -->
+        <div class="posts-feed" id="postsFeed">
+          <!-- Posts will be inserted here by JS -->
+        </div>
+
+        <!-- Loading indicator -->
+        <div class="feed-loader" id="feedLoader">
+          <div class="loader"></div>
+        </div>
+
+        <!-- End of feed message -->
+        <div class="feed-end" id="feedEnd">— You've reached the end —</div>
+      </div>
+
+      <!-- Floating Back to Top Button -->
+      <button class="back-to-top-btn" id="backToTopBtn" aria-label="Back to top">
+        <iconify-icon icon="solar:arrow-up-linear"></iconify-icon>
+      </button>
+
+      <!-- Bottom spacing to avoid mobile navigation overlap -->
+      <div style="height:120px;"></div>
+
+    </main>
+  </div>
+
+  <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <script type="module" src="js/features/community.js"></script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Support</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Iconify Icons -->
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js" defer></script>
+  
+  <!-- Master CSS -->
+  <link rel="stylesheet" href="css/main.css">
+  
+  <!-- Page-specific CSS -->
+  <link rel="stylesheet" href="css/pages/info-pages.css">
+</head>
+<body class="page-public">
+  <div class="app-layout">
+
+    <!-- Simple Header (no sidebar) -->
+    <header class="app-bar">
+      <div class="app-bar-left">
+        <a href="settings.html" class="back-btn" aria-label="Go back">
+          <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+        </a>
+      </div>
+      <h1 class="app-bar-title">Support</h1>
+      <div class="app-bar-right"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="info-container">
+
+        <!-- FAQ Section -->
+        <div class="info-card">
+          <h2>Frequently Asked Questions</h2>
+
+          <div class="faq-item">
+            <h3>How do I deposit money into my wallet?</h3>
+            <p>Go to the Wallet page and tap "Deposit". You will be redirected to your mobile money app (MTN MoMo or Digitel DigiCash). Follow the prompts to complete the payment. The minimum deposit is 5,000 SSP. Funds usually appear within 1–2 minutes.</p>
+          </div>
+
+          <div class="faq-item">
+            <h3>How do I withdraw my winnings?</h3>
+            <p>On the Wallet page, tap "Withdraw". Enter the amount (minimum 2,000 SSP, maximum 500,000 SSP per day). A 1% fee applies. Withdrawals are processed instantly to your linked mobile money account.</p>
+          </div>
+
+          <div class="faq-item">
+            <h3>When do I receive my quiz winnings?</h3>
+            <p>Prizes are credited to your wallet within 30 minutes after the quiz ends. You will receive a notification and the amount will appear in your transaction history.</p>
+          </div>
+
+          <div class="faq-item">
+            <h3>I forgot my password. How can I reset it?</h3>
+            <p>On the login screen, tap "Forgot password". Enter your phone number. You will receive an SMS with a 6-digit code. Enter the code and choose a new password.</p>
+          </div>
+
+          <div class="faq-item">
+            <h3>Can I change my username or email?</h3>
+            <p>Yes. Go to your Profile and tap the edit icon next to your username or email. Changes take effect immediately. Note that your phone number cannot be changed.</p>
+          </div>
+
+          <div class="faq-item">
+            <h3>How are quiz winners determined?</h3>
+            <p>Winners are ranked by total score. In case of a tie, we use average answer speed, longest streak, and earliest achievement of score. The top players receive prizes according to the published pool percentages.</p>
+          </div>
+
+          <div class="faq-item">
+            <h3>What happens if I lose internet during a quiz?</h3>
+            <p>The quiz will continue in the background; your answers are saved locally and submitted when connectivity resumes. However, if the timer expires, the answer is counted as incorrect. We recommend a stable connection.</p>
+          </div>
+
+          <div class="faq-item">
+            <h3>Is there a fee for using the app?</h3>
+            <p>Registration and browsing are free. Quiz entry fees vary by tier (1,000 SSP for hourly, 2,000 SSP daily, 3,000 SSP weekly, or 15,000 SSP auto-subscribe). Withdrawals incur a 1% fee.</p>
+          </div>
+        </div>
+
+        <!-- Contact Form -->
+        <div class="info-card">
+          <h2>Contact Us</h2>
+          <p>Can't find your answer? Send us a message and we'll get back to you within 24 hours.</p>
+
+          <form class="contact-form" id="contactForm">
+            <div class="form-group">
+              <label for="contactName" class="form-label">Full Name</label>
+              <input type="text" id="contactName" class="input-field" placeholder="Your name" required>
+            </div>
+
+            <div class="form-group">
+              <label for="contactEmail" class="form-label">Email Address</label>
+              <input type="email" id="contactEmail" class="input-field" placeholder="your@email.com" required>
+            </div>
+
+            <div class="form-group">
+              <label for="contactPhone" class="form-label">Phone Number (optional)</label>
+              <input type="tel" id="contactPhone" class="input-field" placeholder="+211 9XX XXX XXX">
+            </div>
+
+            <div class="form-group">
+              <label for="contactMessage" class="form-label">Message</label>
+              <textarea id="contactMessage" class="input-field" rows="5" placeholder="Describe your issue or question in detail..." required></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="contactSubmitBtn">
+              Send Message
+              <iconify-icon icon="solar:plain-bold"></iconify-icon>
+            </button>
+          </form>
+        </div>
+
+        <!-- Direct Contact Info -->
+        <div class="info-card">
+          <h2>Other Ways to Reach Us</h2>
+          <div class="contact-info">
+            <div class="contact-item">
+              <iconify-icon icon="solar:chat-round-bold"></iconify-icon>
+              <span><strong>Live Chat:</strong> Available 8:00 AM – 10:00 PM daily (South Sudan time). Click the chat icon in the app.</span>
+            </div>
+            <div class="contact-item">
+              <iconify-icon icon="solar:phone-bold"></iconify-icon>
+              <span><strong>Phone Support:</strong> +211 981 898 069 (toll rates apply). Hours: 9:00 AM – 6:00 PM, Mon–Fri.</span>
+            </div>
+            <div class="contact-item">
+              <iconify-icon icon="solar:mail-bold"></iconify-icon>
+              <span><strong>Email:</strong> support@mabunquiz.com – we aim to reply within 24 hours.</span>
+            </div>
+            <div class="contact-item">
+              <iconify-icon icon="solar:map-point-bold"></iconify-icon>
+              <span><strong>Office:</strong> Juba, South Sudan (by appointment only).</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Spacer -->
+        <div class="bottom-spacer"></div>
+
+      </div>
+    </main>
+  </div>
+
+    <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <!-- Feature JavaScript -->
+  <script type="module" src="js/features/support.js"></script>
+</body>
+</html>

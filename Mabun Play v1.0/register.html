@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Register</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/pages/auth.css">
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-bg-circle auth-bg-circle--top-right"></div>
+    <div class="auth-bg-circle auth-bg-circle--bottom-left"></div>
+
+    <header class="auth-header">
+      <a href="login.html" class="back-btn">
+        <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+      </a>
+      <img src="assets/images/logo.png" alt="Mabun Quiz" class="auth-logo">
+    </header>
+
+    <main class="auth-main">
+      <h1 class="auth-title">Create Account</h1>
+      <p class="auth-subtitle">We'll send a verification code to your phone</p>
+
+      <form class="auth-form" id="registerForm">
+        <!-- Phone -->
+        <div class="form-group">
+          <label for="phone" class="form-label">Phone Number</label>
+          <div class="input-wrapper">
+            <span class="input-prefix">+211</span>
+            <input type="tel" id="phone" class="input-field" 
+                   placeholder="9XX XXX XXX" pattern="^(9[28]\d{7})$" required>
+          </div>
+          <div class="phone-hint">
+            <span class="provider-badge" id="providerBadge"></span>
+          </div>
+        </div>
+
+        <!-- Password with toggle -->
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <div class="input-wrapper">
+            <iconify-icon icon="solar:lock-keyhole-linear" class="input-icon"></iconify-icon>
+            <input type="password" id="password" class="input-field" placeholder="Min. 6 characters" required>
+            <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+              <iconify-icon icon="solar:eye-closed-linear"></iconify-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Confirm Password with toggle -->
+        <div class="form-group">
+          <label for="confirm" class="form-label">Confirm Password</label>
+          <div class="input-wrapper">
+            <iconify-icon icon="solar:lock-keyhole-linear" class="input-icon"></iconify-icon>
+            <input type="password" id="confirm" class="input-field" placeholder="Re‑enter password" required>
+            <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+              <iconify-icon icon="solar:eye-closed-linear"></iconify-icon>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full" id="submitBtn">
+          Send Verification Code
+          <iconify-icon icon="solar:plain-bold"></iconify-icon>
+        </button>
+      </form>
+
+      <p class="auth-footer-text">
+        Already have an account?
+        <a href="login.html" class="auth-link">Log in</a>
+      </p>
+    </main>
+  </div>
+
+    <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <!-- Scripts -->
+  <script type="module" src="js/utils/password-toggle.js"></script>
+  <script type="module" src="js/features/register.js"></script>
+</body>
+</html>

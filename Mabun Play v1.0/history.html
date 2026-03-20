@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Performance History  </title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/pages/history.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
+        <span>Home</span>
+      </a>
+     <a href="community.html" class="nav-item">
+  <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+  <span>Community</span>
+</a>
+      <a href="leaderboard.html" class="nav-item">
+        <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
+        <span>Rank</span>
+      </a>
+      <a href="wallet.html" class="nav-item">
+        <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
+        <span>Wallet</span>
+      </a>
+      <a href="profile.html" class="nav-item">
+        <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
+        <span>Profile</span>
+      </a>
+      <a href="settings.html" class="nav-item">
+  <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+  <span>Settings</span>
+</a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="app-bar">
+        <div class="app-bar-left">
+          <a href="dashboard.html" class="back-btn">
+            <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+          </a>
+        </div>
+        <h1 class="app-bar-title">Performance</h1>
+        <div class="app-bar-right">
+          <a href="notifications.html" class="notification-btn" aria-label="Notifications">
+            <iconify-icon icon="solar:bell-linear"></iconify-icon>
+            <span class="notification-dot"></span>
+          </a>
+          <a href="profile.html" class="profile-avatar" aria-label="Profile">
+            <iconify-icon icon="solar:user-circle-linear"></iconify-icon>
+          </a>
+        </div>
+      </header>
+
+      <!-- History Content -->
+      <div class="history-container">
+        <!-- Period Tabs -->
+        <div class="period-tabs">
+          <button class="period-tab active" data-period="day">Daily</button>
+          <button class="period-tab" data-period="week">Weekly</button>
+          <button class="period-tab" data-period="month">Monthly</button>
+          <button class="period-tab" data-period="year">Yearly</button>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2 class="chart-title">Earnings Overview</h2>
+            <div class="chart-legend">
+              <span class="legend-item">
+                <span class="legend-color" style="background: var(--primary);"></span>
+                Earnings (SSP)
+              </span>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="performanceChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(104,0,128,0.1); color: var(--primary);">
+              <iconify-icon icon="solar:wallet-money-bold"></iconify-icon>
+            </div>
+            <div class="metric-content">
+              <span class="metric-label">Total Earnings</span>
+              <span class="metric-value" id="totalEarnings">—</span>
+              <span class="metric-trend" id="trendEarnings"></span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(23,162,184,0.1); color: var(--info);">
+              <iconify-icon icon="solar:gamepad-bold"></iconify-icon>
+            </div>
+            <div class="metric-content">
+              <span class="metric-label">Avg. Score</span>
+              <span class="metric-value" id="avgScore">—</span>
+              <span class="metric-trend" id="trendAvg"></span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(255,193,7,0.1); color: var(--warning);">
+              <iconify-icon icon="solar:cup-bold"></iconify-icon>
+            </div>
+            <div class="metric-content">
+              <span class="metric-label">Quizzes Played</span>
+              <span class="metric-value" id="quizzesPlayed">—</span>
+              <span class="metric-trend" id="trendPlayed"></span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(40,167,69,0.1); color: var(--success);">
+              <iconify-icon icon="solar:medal-star-bold"></iconify-icon>
+            </div>
+            <div class="metric-content">
+              <span class="metric-label">Best Rank</span>
+              <span class="metric-value" id="bestRank">—</span>
+              <span class="metric-trend" id="trendRank"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="recent-activity">
+          <h2 class="section-title">Recent Quizzes</h2>
+          <div class="table-responsive">
+            <table class="activity-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Quiz</th>
+                  <th>Score</th>
+                  <th>Earnings</th>
+                </tr>
+              </thead>
+              <tbody id="recentQuizzes">
+                <!-- Will be populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <a href="#" class="view-all-link">View All History</a>
+        </div>
+      </div>
+    </main>
+  </div>
+  <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <script type="module" src="js/features/history.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Verify Code</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/pages/auth.css">
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-bg-circle auth-bg-circle--top-right"></div>
+    <div class="auth-bg-circle auth-bg-circle--bottom-left"></div>
+
+    <header class="auth-header">
+      <a href="javascript:history.back()" class="back-btn">
+        <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+      </a>
+      <img src="assets/images/logo.png" alt="Mabun Quiz" class="auth-logo">
+    </header>
+
+    <main class="auth-main">
+      <h1 class="auth-title">Verify Code</h1>
+      <p class="auth-subtitle">
+        Enter the 6‑digit code sent to<br>
+        <span class="phone-display" id="phoneDisplay">—</span>
+      </p>
+
+      <form class="auth-form" id="otpForm">
+        <div class="otp-group" id="otpGroup">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-input" autofocus>
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-input">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-input">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-input">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-input">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-input">
+        </div>
+
+        <input type="hidden" id="hiddenPhone">
+        <input type="hidden" id="hiddenPurpose">
+
+        <div class="timer-display">
+          <iconify-icon icon="solar:clock-circle-bold"></iconify-icon>
+          <span id="timer">02:00</span> remaining
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full" id="verifyBtn">
+          Verify
+          <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>
+        </button>
+      </form>
+
+      <p class="auth-footer-text">
+        Didn't receive the code?
+        <button class="auth-link" id="resendBtn">Resend Code</button>
+      </p>
+    </main>
+  </div>
+  <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <!-- Scripts -->
+  <script type="module" src="js/features/otp.js"></script>
+</body>
+</html>

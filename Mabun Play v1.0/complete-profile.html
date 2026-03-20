@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Play – Complete Profile</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/pages/auth.css">
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-bg-circle auth-bg-circle--top-right"></div>
+    <div class="auth-bg-circle auth-bg-circle--bottom-left"></div>
+
+    <header class="auth-header">
+      <a href="otp.html" class="back-btn">
+        <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+      </a>
+      <img src="assets/images/logo.png" alt="Mabun Quiz" class="auth-logo">
+    </header>
+
+    <main class="auth-main">
+      <h1 class="auth-title">Complete Your Profile</h1>
+      <p class="auth-subtitle">Just a few more details to get started.</p>
+
+      <form class="auth-form" id="profileForm">
+        <!-- Username -->
+        <div class="form-group">
+          <label for="username" class="form-label">Username</label>
+          <div class="input-wrapper">
+            <iconify-icon icon="solar:user-linear" class="input-icon"></iconify-icon>
+            <input type="text" id="username" class="input-field" placeholder="e.g. MabunPlayer1" required>
+          </div>
+        </div>
+
+        <!-- Email (optional) -->
+        <div class="form-group">
+          <label for="email" class="form-label">Email <span class="optional">(Optional)</span></label>
+          <div class="input-wrapper">
+            <iconify-icon icon="solar:letter-linear" class="input-icon"></iconify-icon>
+            <input type="email" id="email" class="input-field" placeholder="your@email.com">
+          </div>
+        </div>
+
+        <!-- Mobile Money (auto-detected) -->
+        <div class="form-group">
+          <label class="form-label">Mobile Money</label>
+          <div class="mm-card">
+            <div class="mm-info">
+              <div class="mm-icon">
+                <iconify-icon icon="solar:smartphone-bold"></iconify-icon>
+              </div>
+              <div>
+                <p class="mm-phone" id="mmPhone">—</p>
+                <div class="mm-detected">
+                  <iconify-icon icon="solar:check-circle-bold" class="detected-icon"></iconify-icon>
+                  <span class="detected-text">Auto-detected</span>
+                </div>
+              </div>
+            </div>
+            <div class="mm-badge" id="mmBadge">—</div>
+          </div>
+          <input type="hidden" id="provider" name="provider">
+        </div>
+
+        <!-- Minimum Deposit Info -->
+        <div class="deposit-card">
+          <div class="deposit-icon">
+            <iconify-icon icon="solar:wallet-money-bold"></iconify-icon>
+          </div>
+          <div class="deposit-content">
+            <h3 class="deposit-title">Minimum Initial Deposit</h3>
+            <p class="deposit-amount">5,000 <span>SSP</span></p>
+            <p class="deposit-note">Required to activate your wallet. This amount remains yours to enter quizzes.</p>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full" id="submitBtn">
+          Complete Registration
+          <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>
+        </button>
+
+        <div class="trust-badge">
+          <iconify-icon icon="solar:lock-keyhole-linear"></iconify-icon>
+          <span>Your information is securely encrypted</span>
+        </div>
+      </form>
+    </main>
+  </div>
+
+    <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <!-- Scripts -->
+  <script type="module" src="js/features/complete-profile.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# Allow all bots
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://www.mabunplay.com/sitemap.xml
+
+# Disallow admin or private pages (if any)
+Disallow: /api/
+Disallow: /js/
+Disallow: /css/
+Disallow: /assets/

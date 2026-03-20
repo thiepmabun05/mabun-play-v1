@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Live Leaderboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/pages/leaderboard.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation (becomes bottom bar on mobile) -->
+       <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
+        <span>Home</span>
+      </a>
+     <a href="community.html" class="nav-item">
+  <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+  <span>Community</span>
+</a>
+      <a href="leaderboard.html" class="nav-item">
+        <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
+        <span>Rank</span>
+      </a>
+      <a href="wallet.html" class="nav-item">
+        <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
+        <span>Wallet</span>
+      </a>
+      <a href="profile.html" class="nav-item">
+        <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
+        <span>Profile</span>
+      </a>
+      <a href="settings.html" class="nav-item">
+  <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+  <span>Settings</span>
+</a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="app-bar">
+        <div class="app-bar-left">
+          <a href="dashboard.html" class="back-btn">
+            <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+          </a>
+        </div>
+        <h1 class="app-bar-title">Leaderboard</h1>
+        <div class="app-bar-right">
+          <a href="notifications.html" class="notification-btn" aria-label="Notifications">
+            <iconify-icon icon="solar:bell-linear"></iconify-icon>
+            <span class="notification-dot"></span>
+          </a>
+          <a href="profile.html" class="profile-avatar" aria-label="Profile">
+            <iconify-icon icon="solar:user-circle-linear"></iconify-icon>
+          </a>
+        </div>
+      </header>
+
+      <!-- Leaderboard Content -->
+      <div class="leaderboard-container">
+        <!-- Quiz Type Switcher -->
+        <div class="quiz-type-switcher">
+          <button class="type-btn active" data-type="hourly">Hourly Quiz</button>
+          <button class="type-btn" data-type="daily">Daily Challenge</button>
+          <button class="type-btn" data-type="weekly">Weekly Challenge</button>
+        </div>
+
+        <!-- Quiz Context -->
+        <div class="quiz-context">
+          <div>
+            <h2 class="quiz-title" id="quizName">—</h2>
+            <p class="quiz-qualifier" id="qualifierText">—</p>
+          </div>
+          <div class="time-left">
+            <p class="time-label">Time Left</p>
+            <p class="time-value" id="timeLeft">00:00</p>
+          </div>
+        </div>
+
+        <!-- Prize Pool -->
+        <div class="prize-pool-info">
+          <div class="pool-item">
+            <span class="pool-label">Prize Pool</span>
+            <span class="pool-value" id="prizePool">—</span>
+          </div>
+        </div>
+
+        <!-- Live Indicator & Column Headers -->
+        <div class="leaderboard-header">
+          <div class="live-indicator">
+            <span class="live-dot"></span>
+            <span class="live-text">Live</span>
+          </div>
+          <div class="leaderboard-columns">
+            <span class="col-rank">#</span>
+            <span class="col-player">Player</span>
+            <span class="col-score">Score</span>
+            <span class="col-prize">Prize</span>
+          </div>
+        </div>
+
+        <!-- Leaderboard List -->
+        <div class="leaderboard-list" id="leaderboardList"></div>
+
+        <!-- Loading Spinner (shown while fetching) -->
+        <div class="loading-spinner" id="loadingSpinner" style="display: none;">
+          <iconify-icon icon="solar:spinner-bold" class="spin"></iconify-icon>
+        </div>
+
+        <!-- Load More Button (for pagination) -->
+        <div class="load-more-container" id="loadMoreContainer" style="display: none;">
+          <button class="btn-load-more" id="loadMoreBtn">
+            <iconify-icon icon="solar:arrow-down-linear"></iconify-icon>
+            Load More
+          </button>
+        </div>
+
+        <!-- Bottom Spacer (prevents content hiding behind nav on mobile) -->
+        <div class="bottom-spacer" aria-hidden="true"></div>
+      </div>
+    </main>
+  </div>
+
+    <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <script type="module" src="js/features/leaderboard.js"></script>
+</body>
+</html>

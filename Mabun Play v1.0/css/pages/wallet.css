@@ -1,0 +1,341 @@
+/* ============================================
+   wallet.css – Wallet Page
+   Fully compatible with app-layout (sidebar)
+   Uses design tokens from variables.css
+   ============================================ */
+
+/* ----- Wallet Container (inside main-content) ----- */
+.wallet-container {
+  padding: var(--space-m) var(--space-m) calc(var(--bottom-nav-height) + var(--space-xl)) var(--space-m);
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-l);
+}
+
+/* ----- Balance Card ----- */
+.balance-card {
+  background: linear-gradient(135deg, var(--card), var(--secondary));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-l);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+}
+
+.balance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-s);
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.balance-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.balance-cap {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  background-color: var(--card);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+
+.balance-amount {
+  font-size: var(--text-4xl);
+  font-weight: var(--font-extrabold);
+  color: var(--primary);
+  line-height: 1.2;
+  margin-bottom: var(--space-m);
+  word-break: break-word;
+}
+
+.balance-progress {
+  height: 8px;
+  background-color: var(--border);
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-bottom: var(--space-xs);
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.balance-warning {
+  font-size: var(--text-xs);
+  color: var(--warning);
+  min-height: 20px;
+}
+
+/* ----- Quick Action Buttons ----- */
+.action-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-m);
+}
+
+.action-buttons .btn {
+  height: 56px;
+  font-size: var(--text-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+}
+
+/* ----- Transactions Card ----- */
+.transactions-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-l);
+}
+
+.transactions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-l);
+  flex-wrap: wrap;
+  gap: var(--space-m);
+}
+
+.transactions-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  margin: 0;
+}
+
+.transaction-filters {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: var(--space-xs) var(--space-m);
+  background-color: transparent;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  background-color: var(--muted);
+  color: var(--foreground);
+}
+
+.filter-btn.active {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.transactions-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  margin-bottom: var(--space-l);
+  min-height: 200px;
+}
+
+/* Transaction Item */
+.transaction-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-m);
+  padding: var(--space-s) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.transaction-item:last-child {
+  border-bottom: none;
+}
+
+.transaction-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 24px;
+}
+
+.transaction-icon.deposit {
+  background-color: rgba(40, 167, 69, 0.1);
+  color: var(--success);
+}
+.transaction-icon.withdrawal {
+  background-color: rgba(23, 162, 184, 0.1);
+  color: var(--info);
+}
+.transaction-icon.quiz {
+  background-color: rgba(104, 0, 128, 0.1);
+  color: var(--primary);
+}
+.transaction-icon.prize {
+  background-color: rgba(255, 193, 7, 0.1);
+  color: var(--warning);
+}
+
+.transaction-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.transaction-title {
+  font-weight: var(--font-bold);
+  color: var(--foreground);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transaction-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+}
+
+.transaction-amount {
+  font-weight: var(--font-bold);
+  font-size: var(--text-base);
+  flex-shrink: 0;
+}
+
+.transaction-amount.positive {
+  color: var(--success);
+}
+.transaction-amount.negative {
+  color: var(--destructive);
+}
+
+.view-all-link {
+  display: block;
+  text-align: center;
+  color: var(--primary);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+  margin-top: var(--space-m);
+  font-size: var(--text-sm);
+  padding: var(--space-s) 0;
+}
+
+.view-all-link:hover {
+  text-decoration: underline;
+}
+
+/* ----- Auto‑Topup Reminder ----- */
+.topup-reminder {
+  display: none; /* hidden by default, shown via JS */
+  align-items: center;
+  gap: var(--space-m);
+  background-color: rgba(255, 193, 7, 0.1);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-lg);
+  padding: var(--space-m);
+  margin-top: var(--space-s);
+}
+
+.topup-reminder.active {
+  display: flex;
+}
+
+.reminder-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  background-color: rgba(255, 193, 7, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--warning);
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.reminder-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.reminder-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  color: var(--warning);
+  margin-bottom: 2px;
+}
+
+.reminder-text {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+}
+
+#quickTopupBtn {
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 var(--space-m);
+  font-size: var(--text-sm);
+}
+
+/* ----- Responsive ----- */
+@media (max-width: 480px) {
+  .balance-amount {
+    font-size: var(--text-3xl);
+  }
+  .action-buttons {
+    grid-template-columns: 1fr;
+    gap: var(--space-s);
+  }
+  .transactions-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .transaction-filters {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .filter-btn {
+    flex: 1;
+    text-align: center;
+    padding: var(--space-xs) 0;
+  }
+  .topup-reminder {
+    flex-wrap: wrap;
+  }
+  #quickTopupBtn {
+    width: 100%;
+  }
+}
+
+@media (min-width: 768px) {
+  .wallet-container {
+    max-width: 1000px;
+  }
+  .action-buttons {
+    grid-template-columns: 1fr 1fr;
+  }
+}

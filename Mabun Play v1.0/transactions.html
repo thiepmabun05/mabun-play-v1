@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mabun Quiz – Transactions</title>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/wallet.css">
+  <link rel="stylesheet" href="css/pages/transactions.css">
+</head>
+<body>
+  <div class="app-layout">
+
+    <!-- Sidebar Navigation -->
+        <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
+        <span>Home</span>
+      </a>
+     <a href="community.html" class="nav-item">
+  <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+  <span>Community</span>
+</a>
+      <a href="leaderboard.html" class="nav-item">
+        <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
+        <span>Rank</span>
+      </a>
+      <a href="wallet.html" class="nav-item">
+        <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
+        <span>Wallet</span>
+      </a>
+      <a href="profile.html" class="nav-item">
+        <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
+        <span>Profile</span>
+      </a>
+      <a href="settings.html" class="nav-item">
+  <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+  <span>Settings</span>
+</a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Header -->
+      <header class="app-bar">
+        <div class="app-bar-left">
+          <a href="wallet.html" class="back-btn">
+            <iconify-icon icon="solar:arrow-left-linear"></iconify-icon>
+          </a>
+        </div>
+        <h1 class="app-bar-title">All Transactions</h1>
+        <div class="app-bar-right">
+          <a href="notifications.html" class="notification-btn" aria-label="Notifications">
+            <iconify-icon icon="solar:bell-linear"></iconify-icon>
+            <span class="notification-dot"></span>
+          </a>
+          <a href="profile.html" class="profile-avatar" aria-label="Profile">
+            <iconify-icon icon="solar:user-circle-linear"></iconify-icon>
+          </a>
+        </div>
+      </header>
+
+      <!-- Transactions Content -->
+      <div class="transactions-page-container">
+
+        <!-- Filters -->
+        <div class="transactions-filters">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="deposit">Deposits</button>
+          <button class="filter-btn" data-filter="withdrawal">Withdrawals</button>
+          <button class="filter-btn" data-filter="quiz">Quiz Fees</button>
+        </div>
+
+        <!-- Transactions List -->
+        <div class="transactions-list" id="transactionsList">
+          <!-- JS will dynamically insert transactions here -->
+        </div>
+
+        <!-- Bottom Space for Navigation -->
+        <div class="bottom-space"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Receipt Modal -->
+  <div class="modal-overlay" id="receiptModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Transaction Receipt</h2>
+        <button class="modal-close" id="closeModalBtn">
+          <iconify-icon icon="solar:close-circle-linear"></iconify-icon>
+        </button>
+      </div>
+      <div class="modal-body" id="receiptContent">
+        <!-- Receipt details will be injected here -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="printReceiptBtn">
+          <iconify-icon icon="solar:printer-linear"></iconify-icon>
+          Print
+        </button>
+        <button class="btn btn-primary" id="downloadReceiptBtn">
+          <iconify-icon icon="solar:download-linear"></iconify-icon>
+          Download PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+    <!-- Core app script -->
+  <script type="module" src="js/core/app.js"></script>
+  <script type="module" src="js/features/transactions.js"></script>
+</body>
+</html>
