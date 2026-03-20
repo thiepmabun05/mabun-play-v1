@@ -246,14 +246,17 @@ async function handleJoinQuiz() {
     return;
   }
 
-  const supabase = window.supabaseClient;
-  if (!supabase) {
-    await showModal({ title: 'Error', message: 'Supabase client not available.', confirmText: 'OK' });
-    return;
-  }
-
   try {
+    const supabase = window.supabaseClient;
     const { data: { user } } = await supabase.auth.getUser();
+
+    // Get total questions for this quiz
+    const { count, error: countError } = await supabase
+      .from('questions')
+      .select('*', { count: 'exact', head: true })
+      .eq('quiz_id', state.liveQuiz.id);
+    if (countError) throw countError;
+
     const { data: session, error } = await supabase
       .from('quiz_sessions')
       .insert({
@@ -261,6 +264,10 @@ async function handleJoinQuiz() {
         user_id: user.id,
         status: 'active',
         started_at: new Date().toISOString(),
+        total_questions: count,
+        current_question_index: 0,
+        score: 0,
+        streak: 0
       })
       .select()
       .single();
@@ -272,7 +279,6 @@ async function handleJoinQuiz() {
     await showModal({ title: 'Join Failed', message: err.message || 'Could not join quiz.', confirmText: 'OK' });
   }
 }
-
 async function handleChallengeEntry(e) {
   e.preventDefault();
   const btn = e.currentTarget;
