@@ -248,16 +248,31 @@ async function handleJoinQuiz() {
 
   try {
     const supabase = window.supabaseClient;
-    const { data: { user } } = await supabase.auth.getUser();
+    console.log('🚀 handleJoinQuiz started');
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) throw userError;
+    if (!user) throw new Error('Not authenticated');
+    console.log('✅ User:', user.id);
 
-    // Get total questions for this quiz
+    console.log('Quiz ID from state:', state.liveQuiz.id);
+    if (!state.liveQuiz.id) throw new Error('Quiz ID is null');
+
+    // Get total questions count
     const { count, error: countError } = await supabase
       .from('questions')
       .select('*', { count: 'exact', head: true })
       .eq('quiz_id', state.liveQuiz.id);
     if (countError) throw countError;
+    console.log(`📊 Total questions for quiz ${state.liveQuiz.id}: ${count}`);
 
-    const { data: session, error } = await supabase
+    if (count === 0) {
+      await showModal({ title: 'No Questions', message: 'This quiz has no questions yet.', confirmText: 'OK' });
+      return;
+    }
+
+    // Insert quiz session
+    const { data: session, error: insertError } = await supabase
       .from('quiz_sessions')
       .insert({
         quiz_id: state.liveQuiz.id,
@@ -271,11 +286,16 @@ async function handleJoinQuiz() {
       })
       .select()
       .single();
-    if (error) throw error;
+    
+    if (insertError) {
+      console.error('Insert error:', insertError);
+      throw insertError;
+    }
+    console.log('✅ Session created:', session);
 
     window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${session.id}`;
   } catch (err) {
-    console.error(err);
+    console.error('❌ Join error:', err);
     await showModal({ title: 'Join Failed', message: err.message || 'Could not join quiz.', confirmText: 'OK' });
   }
 }
