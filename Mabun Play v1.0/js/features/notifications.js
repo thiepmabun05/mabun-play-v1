@@ -1,4 +1,4 @@
-import { supabase } from '../core/supabase.js';
+// js/features/notifications.js
 import { showModal } from '../utils/modal.js';
 import { timeAgo } from '../utils/formatters.js';
 
@@ -11,6 +11,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.preventDefault();
       window.history.back();
     });
+  }
+
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    console.error('Supabase client not available');
+    if (list) list.innerHTML = '<div class="empty-state">Error loading notifications</div>';
+    return;
   }
 
   try {
