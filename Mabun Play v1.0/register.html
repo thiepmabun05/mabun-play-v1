@@ -5,16 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mabun Quiz – Register</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script>
-  window.supabaseClient = window.supabase.createClient(
-    'https://iarjbnklktgcetfpayks.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlhcmpibmtsa3RnY2V0ZnBheWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5ODQ2MjAsImV4cCI6MjA4OTU2MDYyMH0.4ZS3espzqXETxwJDxFTs5mP1p2PP21B0cfQ3L8W24S8'
-  );
-</script>
   <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/pages/auth.css">
+  <!-- Supabase client -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script>
+    window.supabaseClient = window.supabase.createClient(
+      'https://iarjbnklktgcetfpayks.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlhcmpibmtsa3RnY2V0ZnBheWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5ODQ2MjAsImV4cCI6MjA4OTU2MDYyMH0.4ZS3espzqXETxwJDxFTs5mP1p2PP21B0cfQ3L8W24S8'
+    );
+  </script>
 </head>
 <body>
   <div class="auth-page">
@@ -30,23 +31,31 @@
 
     <main class="auth-main">
       <h1 class="auth-title">Create Account</h1>
-      <p class="auth-subtitle">We'll send a verification code to your phone</p>
+      <p class="auth-subtitle">Sign up with your email and password</p>
 
       <form class="auth-form" id="registerForm">
-        <!-- Phone -->
+        <!-- Email -->
         <div class="form-group">
-          <label for="phone" class="form-label">Phone Number</label>
+          <label for="email" class="form-label">Email Address</label>
+          <div class="input-wrapper">
+            <iconify-icon icon="solar:letter-linear" class="input-icon"></iconify-icon>
+            <input type="email" id="email" class="input-field" placeholder="your@email.com" required>
+          </div>
+        </div>
+
+        <!-- Phone (for profile only) -->
+        <div class="form-group">
+          <label for="phone" class="form-label">Phone Number (for wallet)</label>
           <div class="input-wrapper">
             <span class="input-prefix">+211</span>
-            <input type="tel" id="phone" class="input-field" 
-                   placeholder="9XX XXX XXX" pattern="^(9[28]\d{7})$" required>
+            <input type="tel" id="phone" class="input-field" placeholder="9XX XXX XXX" pattern="^(9[28]\d{7})$" required>
           </div>
           <div class="phone-hint">
             <span class="provider-badge" id="providerBadge"></span>
           </div>
         </div>
 
-        <!-- Password with toggle -->
+        <!-- Password -->
         <div class="form-group">
           <label for="password" class="form-label">Password</label>
           <div class="input-wrapper">
@@ -58,7 +67,7 @@
           </div>
         </div>
 
-        <!-- Confirm Password with toggle -->
+        <!-- Confirm Password -->
         <div class="form-group">
           <label for="confirm" class="form-label">Confirm Password</label>
           <div class="input-wrapper">
@@ -71,8 +80,8 @@
         </div>
 
         <button type="submit" class="btn btn-primary btn-full" id="submitBtn">
-          Send Verification Code
-          <iconify-icon icon="solar:plain-bold"></iconify-icon>
+          Sign Up
+          <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>
         </button>
       </form>
 
@@ -83,11 +92,8 @@
     </main>
   </div>
 
-    <!-- Core app script -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script type="module" src="js/core/app.js"></script>
-  <!-- Scripts -->
-  <script type="module" src="js/utils/password-toggle.js"></script>
   <script type="module" src="js/features/register.js"></script>
+  <script type="module" src="js/utils/password-toggle.js"></script>
 </body>
 </html>
