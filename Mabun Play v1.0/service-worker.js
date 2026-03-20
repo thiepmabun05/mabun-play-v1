@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mabun-quiz-v1';
+const CACHE_NAME = 'mabun-play-v1';
 
 const STATIC_ASSETS = [
   '/',
