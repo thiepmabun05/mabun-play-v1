@@ -1,6 +1,6 @@
 // js/features/complete-profile.js
 import { showModal } from '../utils/modal.js';
-import { validateUsername } from '../utils/validation.js';
+import { validateUsername, validateEmail } from '../utils/validation.js';
 import config from '../core/config.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const usernameInput = document.getElementById('username');
   const emailInput = document.getElementById('email');
 
-  if (!mmPhone || !mmBadge || !providerInput || !form || !submitBtn || !usernameInput || !emailInput) return;
+  if (!mmPhone || !mmBadge || !providerInput || !form || !submitBtn || !usernameInput) return;
 
   mmPhone.textContent = pendingData.phone;
   const provider = pendingData.provider;
@@ -36,7 +36,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   emailInput.value = user.email || '';
 
-  // Hide deposit card if payments disabled (optional)
   if (!config.ENABLE_PAYMENTS) {
     const depositCard = document.querySelector('.deposit-card');
     if (depositCard) depositCard.style.display = 'none';
@@ -55,11 +54,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     submitBtn.innerHTML = '<span class="loader"></span> Saving...';
 
     try {
-      // Insert profile
+      // Insert profile using the user's ID as the primary key
       const { error: insertError } = await supabase
         .from('profiles')
         .insert({
-          user_id: user.id,
+          id: user.id,            // use 'id' column
           username,
           email: user.email,
           phone: pendingData.phone,
@@ -72,10 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
       if (insertError) throw insertError;
 
-      // Update user metadata in auth (optional)
-      await supabase.auth.updateUser({
-        data: { username },
-      });
+      await supabase.auth.updateUser({ data: { username } });
 
       sessionStorage.removeItem('pending_registration');
       window.location.href = 'dashboard.html';
