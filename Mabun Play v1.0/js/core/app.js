@@ -1,5 +1,5 @@
+// js/core/app.js
 import { setupAuthGuard } from './guards.js';
-import { supabase } from './supabase.js';
 
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 if ('serviceWorker' in navigator && !isLocal) {
@@ -25,16 +25,35 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-supabase.auth.onAuthStateChange((event, session) => {
-  if (session?.user) {
-    localStorage.setItem('mabun_user', JSON.stringify(session.user));
-    localStorage.setItem('mabun_token', session.access_token);
-  } else {
-    localStorage.removeItem('mabun_user');
-    localStorage.removeItem('mabun_token');
-  }
+// Ensure the global Supabase client is available before setting up auth state listener
+function waitForSupabase() {
+  return new Promise((resolve) => {
+    if (window.supabaseClient) {
+      resolve(window.supabaseClient);
+    } else {
+      const check = setInterval(() => {
+        if (window.supabaseClient) {
+          clearInterval(check);
+          resolve(window.supabaseClient);
+        }
+      }, 50);
+    }
+  });
+}
+
+waitForSupabase().then(supabase => {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      localStorage.setItem('mabun_user', JSON.stringify(session.user));
+      localStorage.setItem('mabun_token', session.access_token);
+    } else {
+      localStorage.removeItem('mabun_user');
+      localStorage.removeItem('mabun_token');
+    }
+  });
 });
 
+// Fix header overlap
 document.addEventListener('DOMContentLoaded', () => {
   const header = document.querySelector('.app-bar');
   const main = document.querySelector('.main-content');
