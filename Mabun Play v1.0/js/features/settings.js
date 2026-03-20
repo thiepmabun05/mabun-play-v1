@@ -24,11 +24,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await supabase.auth.getSession();
   const user = session?.user;
   if (user && elements.linkedPhone) {
-    // Get phone from profile
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('phone')
-      .eq('user_id', user.id)
+      .eq('id', user.id)
       .single();
     if (!error && profile) elements.linkedPhone.textContent = profile.phone || '—';
     else elements.linkedPhone.textContent = '—';
@@ -114,7 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (newPassword) {
       try {
-        // First sign in with current password to verify
+        // Verify current password
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: user.email,
           password: newPassword.current,
