@@ -1,4 +1,4 @@
-import { supabase } from '../core/supabase.js';
+// js/features/history.js
 import { showModal } from '../utils/modal.js';
 import { formatCurrency, formatShortDate } from '../utils/formatters.js';
 import Chart from 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
@@ -19,6 +19,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let chart;
   let currentPeriod = 'day';
+
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    console.error('Supabase client not available');
+    return;
+  }
 
   async function loadHistory(period) {
     try {
@@ -81,7 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateRecent(recent) {
     if (!elements.recentQuizzes) return;
     if (recent.length === 0) {
-      elements.recentQuizzes.innerHTML = '<tr><td colspan="4" class="empty">No recent quizzes</td></tr>';
+      elements.recentQuizzes.innerHTML = '=<tr><td colspan="4" class="empty">No recent quizzes</td></tr>';
       return;
     }
     elements.recentQuizzes.innerHTML = recent.map(q => `
