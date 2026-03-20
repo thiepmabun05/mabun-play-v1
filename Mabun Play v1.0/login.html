@@ -65,8 +65,12 @@
     </main>
   </div>
 
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script>
+    window.supabaseClient = window.supabase.createClient('https://iarjbnklktgcetfpayks.supabase.co', 'your-anon-key');
+  </script>
   <script type="module" src="js/core/app.js"></script>
   <script type="module" src="js/features/login.js"></script>
-  <script type="module" src="js/utils/password-toggle.js"></script>
-</body>
+  </body>
 </html>
