@@ -18,51 +18,68 @@ document.addEventListener('DOMContentLoaded', async () => {
   const supabase = window.supabaseClient;
   if (!supabase) {
     console.error('Supabase client not available');
+    showModal({ title: 'Error', message: 'Configuration error. Please refresh.', confirmText: 'OK' });
     return;
   }
 
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user;
-  if (user && elements.linkedPhone) {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('phone')
-      .eq('id', user.id)
-      .single();
-    if (!error && profile) elements.linkedPhone.textContent = profile.phone || '—';
-    else elements.linkedPhone.textContent = '—';
+  // Get current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error('User not authenticated');
+    window.location.href = 'login.html';
+    return;
   }
 
-  try {
-    const { data: settings, error } = await supabase
-      .from('user_settings')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!error && settings) {
-      if (elements.pushNotifications) elements.pushNotifications.checked = settings.push_notifications;
-      if (elements.quizReminders) elements.quizReminders.checked = settings.quiz_reminders;
-      if (elements.promotions) elements.promotions.checked = settings.promotions;
-    }
-  } catch (error) {
-    console.error('Failed to load settings:', error);
+  // Get profile (for phone number)
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('phone')
+    .eq('id', user.id)
+    .single();
+  if (!profileError && profile && elements.linkedPhone) {
+    elements.linkedPhone.textContent = profile.phone || '—';
+  } else {
+    if (elements.linkedPhone) elements.linkedPhone.textContent = '—';
   }
 
+  // Get user settings
+  let settings = {
+    push_notifications: true,
+    quiz_reminders: true,
+    promotions: false,
+  };
+  const { data: existingSettings, error: settingsError } = await supabase
+    .from('user_settings')
+    .select('push_notifications, quiz_reminders, promotions')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!settingsError && existingSettings) {
+    settings = existingSettings;
+  } else if (settingsError && settingsError.code !== 'PGRST116') {
+    console.error('Failed to load settings:', settingsError);
+  }
+
+  // Apply settings to UI
+  if (elements.pushNotifications) elements.pushNotifications.checked = settings.push_notifications;
+  if (elements.quizReminders) elements.quizReminders.checked = settings.quiz_reminders;
+  if (elements.promotions) elements.promotions.checked = settings.promotions;
+
+  // Save settings to database
   async function saveSetting(key, value) {
-    try {
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          [key]: value,
-        });
-      if (error) throw error;
-    } catch (error) {
-      showModal({ title: 'Error', message: error.message, confirmText: 'OK' });
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({
+        user_id: user.id,
+        [key]: value,
+      });
+    if (error) {
+      console.error('Error saving setting:', error);
+      showModal({ title: 'Error', message: 'Could not save settings. Please try again.', confirmText: 'OK' });
     }
   }
 
+  // Event listeners for toggles
   elements.pushNotifications?.addEventListener('change', (e) => {
     saveSetting('push_notifications', e.target.checked);
   });
@@ -73,14 +90,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     saveSetting('promotions', e.target.checked);
   });
 
+  // Edit Profile – redirect to profile page
   elements.editProfile?.addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = 'profile.html?edit=true';
   });
 
+  // Change Password – open SweetAlert2 dialog
   elements.changePassword?.addEventListener('click', async (e) => {
     e.preventDefault();
-    const { value: newPassword } = await Swal.fire({
+    const { value: formValues } = await Swal.fire({
       title: 'Change Password',
       html: `
         <input type="password" id="currentPassword" class="swal2-input" placeholder="Current password">
@@ -111,39 +130,48 @@ document.addEventListener('DOMContentLoaded', async () => {
       },
     });
 
-    if (newPassword) {
+    if (formValues) {
       try {
-        // Verify current password
+        // First, verify current password by attempting to sign in
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: user.email,
-          password: newPassword.current,
+          password: formValues.current,
         });
         if (signInError) throw new Error('Current password is incorrect');
 
-        const { error } = await supabase.auth.updateUser({ password: newPassword.new });
-        if (error) throw error;
+        // Update password
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: formValues.new,
+        });
+        if (updateError) throw updateError;
+
         await showModal({ title: 'Success', message: 'Password updated successfully.', confirmText: 'OK' });
       } catch (error) {
+        console.error('Password change error:', error);
         await showModal({ title: 'Error', message: error.message, confirmText: 'OK' });
       }
     }
   });
 
+  // Linked Accounts – redirect to linked-accounts.html (which shows phone number)
   elements.linkedAccounts?.addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = 'linked-accounts.html';
   });
 
+  // Help Center – redirect to support.html
   elements.helpCenter?.addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = 'support.html';
   });
 
+  // Contact Support – redirect to support.html#contact
   elements.contactSupport?.addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = 'support.html#contact';
   });
 
+  // Terms & Privacy – redirect to terms.html
   elements.terms?.addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = 'terms.html';
