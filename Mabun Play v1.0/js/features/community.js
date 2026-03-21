@@ -2,7 +2,7 @@
 import { showModal } from '../utils/modal.js';
 import { throttle } from '../utils/helpers.js';
 
-// Helper to format time (same as before)
+// Time formatter
 function formatTime(dateString) {
   if (!dateString) return 'Just now';
   const date = new Date(dateString);
@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     backToTopBtn: document.getElementById('backToTopBtn'),
     postImageUpload: document.getElementById('postImageUpload'),
     imagePreview: document.getElementById('imagePreview'),
+    postAvatar: document.querySelector('.create-post-card .post-avatar'), // avatar in create post area
   };
 
   let currentFeed = 'latest';
@@ -43,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let hasMore = true;
   let selectedImageFile = null;
   let currentUserId = null;
-  let followingUsers = [];
+  let currentUserProfile = null;
 
   const supabase = window.supabaseClient;
   if (!supabase) {
@@ -52,13 +53,32 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // ==================== Helper Functions ====================
-
+  // ==================== Authentication & User Data ====================
   async function getCurrentUser() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) return null;
     currentUserId = user.id;
     return user;
+  }
+
+  async function getCurrentUserProfile() {
+    if (!currentUserId) return null;
+    if (currentUserProfile) return currentUserProfile;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('username, avatar_url')
+      .eq('id', currentUserId)
+      .single();
+    if (error) {
+      console.error('Error fetching profile:', error);
+      return null;
+    }
+    currentUserProfile = data;
+    // Update the avatar in the create‑post card
+    if (elements.postAvatar) {
+      elements.postAvatar.src = currentUserProfile.avatar_url || '/assets/images/default-avatar.png';
+    }
+    return currentUserProfile;
   }
 
   async function getFollowingIds() {
@@ -67,15 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
       .from('follows')
       .select('following_id')
       .eq('follower_id', currentUserId);
-    if (error) {
-      console.error('Error fetching following:', error);
-      return [];
-    }
-    followingUsers = data.map(f => f.following_id);
-    return followingUsers;
+    if (error) return [];
+    return data.map(f => f.following_id);
   }
 
-  // ==================== Fetch Posts ====================
+  // ==================== Load Posts ====================
   async function loadPosts(feed, pageNum) {
     if (loading || !hasMore) return;
     loading = true;
@@ -84,14 +100,32 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       let query = supabase
         .from('posts')
-        .select('*, profiles:user_id (username, avatar_url)')
+        .select(`
+          id,
+          content,
+          image_url,
+          user_id,
+          created_at,
+          likes_count,
+          comments_count,
+          profiles (username, avatar_url)
+        `)
         .order('created_at', { ascending: false });
 
       if (feed === 'trending') {
-        // Trending: posts with highest likes_count + comments_count (you can adjust the formula)
+        // Trending: posts with highest likes_count + comments_count
         query = supabase
           .from('posts')
-          .select('*, profiles:user_id (username, avatar_url)')
+          .select(`
+            id,
+            content,
+            image_url,
+            user_id,
+            created_at,
+            likes_count,
+            comments_count,
+            profiles (username, avatar_url)
+          `)
           .order('likes_count', { ascending: false })
           .order('comments_count', { ascending: false });
       } else if (feed === 'following') {
@@ -104,48 +138,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         query = supabase
           .from('posts')
-          .select('*, profiles:user_id (username, avatar_url)')
+          .select(`
+            id,
+            content,
+            image_url,
+            user_id,
+            created_at,
+            likes_count,
+            comments_count,
+            profiles (username, avatar_url)
+          `)
           .in('user_id', following)
           .order('created_at', { ascending: false });
       }
 
-      // Pagination: get 10 posts at a time
       const { data: posts, error } = await query.range((pageNum - 1) * 10, pageNum * 10 - 1);
       if (error) throw error;
 
       if (posts.length === 0 && pageNum === 1) {
         elements.postsFeed.innerHTML = '<div class="empty-state">No posts yet. Be the first!</div>';
       } else {
-        // Fetch likes and comments counts for each post (if not already in the post object)
-        for (const post of posts) {
-          // Get like count
-          const { count: likesCount } = await supabase
+        // For each post, check if the current user liked it
+        const likedMap = {};
+        if (currentUserId) {
+          const { data: likes } = await supabase
             .from('likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
-          post.likes_count = likesCount;
-
-          // Get comment count
-          const { count: commentsCount } = await supabase
-            .from('comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
-          post.comments_count = commentsCount;
-
-          // Get user liked status
-          if (currentUserId) {
-            const { data: liked } = await supabase
-              .from('likes')
-              .select('id')
-              .eq('post_id', post.id)
-              .eq('user_id', currentUserId)
-              .maybeSingle();
-            post.user_liked = !!liked;
-          } else {
-            post.user_liked = false;
+            .select('post_id')
+            .eq('user_id', currentUserId)
+            .in('post_id', posts.map(p => p.id));
+          if (likes) {
+            likes.forEach(like => { likedMap[like.post_id] = true; });
           }
+        }
 
-          elements.postsFeed.appendChild(createPostElement(post));
+        for (const post of posts) {
+          // Extract profile from the nested object
+          const profile = post.profiles && post.profiles[0] ? post.profiles[0] : { username: 'Unknown', avatar_url: null };
+          const postWithProfile = {
+            ...post,
+            profiles: profile,
+            user_liked: likedMap[post.id] || false,
+          };
+          elements.postsFeed.appendChild(createPostElement(postWithProfile));
         }
         hasMore = posts.length === 10;
         page = pageNum;
@@ -182,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="post-time">${formatTime(createdAt)}</span>
         </div>
       </div>
-      <div class="post-content">${post.content || ''}</div>
+      <div class="post-content">${escapeHtml(post.content) || ''}</div>
       ${post.image_url ? `<img src="${post.image_url}" alt="" class="post-image">` : ''}
       <div class="post-actions">
         <button class="post-action like-btn" data-id="${post.id}">
@@ -219,14 +253,13 @@ document.addEventListener('DOMContentLoaded', () => {
           await supabase.from('likes').delete().eq('post_id', post.id).eq('user_id', currentUserId);
           likeBtn.querySelector('span').textContent = likeCount - 1;
           likeBtn.querySelector('iconify-icon').setAttribute('icon', 'solar:heart-linear');
-          post.likes_count--;
         } else {
           await supabase.from('likes').insert({ post_id: post.id, user_id: currentUserId });
           likeBtn.querySelector('span').textContent = likeCount + 1;
           likeBtn.querySelector('iconify-icon').setAttribute('icon', 'solar:heart-bold');
-          post.likes_count++;
         }
-        // Optionally, update the count in memory (already done)
+        // We could also update the count in memory, but the trigger will update the posts table.
+        // For UI consistency, we simply change the count locally.
       } catch (error) {
         console.error('Like failed:', error);
       }
@@ -260,6 +293,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const commentInput = div.querySelector('.comment-input');
     const commentSubmit = div.querySelector('.comment-submit');
     commentSubmit.addEventListener('click', async () => {
+      if (!currentUserId) {
+        await showModal({ title: 'Login Required', message: 'Please log in to comment.', confirmText: 'OK' });
+        return;
+      }
       const text = commentInput.value.trim();
       if (!text) return;
       try {
@@ -280,14 +317,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return div;
   }
 
-  // ==================== Load Comments (with replies) ====================
+  // ==================== Load Comments ====================
   async function loadComments(postId) {
     try {
       const { data: comments, error } = await supabase
         .from('comments')
         .select(`
           *,
-          profiles:user_id (username, avatar_url)
+          profiles (username, avatar_url)
         `)
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
@@ -298,19 +335,21 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!comments || comments.length === 0) {
         commentsList.innerHTML = '<p class="no-comments">No comments yet.</p>';
       } else {
-        // For simplicity, we'll display comments flat. If you want replies, you'd need a parent_id column.
-        commentsList.innerHTML = comments.map(c => `
-          <div class="comment">
-            <a href="profile.html?userId=${c.user_id}" class="comment-avatar-link">
-              <img src="${c.profiles?.avatar_url || '/assets/images/default-avatar.png'}" alt="" class="comment-avatar">
-            </a>
-            <div class="comment-body">
-              <a href="profile.html?userId=${c.user_id}" class="comment-author">${c.profiles?.username || 'Unknown'}</a>
-              <span class="comment-text">${c.text}</span>
-              <span class="comment-time">${formatTime(c.created_at)}</span>
+        commentsList.innerHTML = comments.map(c => {
+          const profile = c.profiles && c.profiles[0] ? c.profiles[0] : { username: 'Unknown', avatar_url: null };
+          return `
+            <div class="comment">
+              <a href="profile.html?userId=${c.user_id}" class="comment-avatar-link">
+                <img src="${profile.avatar_url || '/assets/images/default-avatar.png'}" alt="" class="comment-avatar">
+              </a>
+              <div class="comment-body">
+                <a href="profile.html?userId=${c.user_id}" class="comment-author">${profile.username}</a>
+                <span class="comment-text">${escapeHtml(c.text)}</span>
+                <span class="comment-time">${formatTime(c.created_at)}</span>
+              </div>
             </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       }
     } catch (error) {
       console.error('Failed to load comments:', error);
@@ -338,10 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
         content,
         image_url: imageUrl,
       })
-      .select(`
-        *,
-        profiles:user_id (username, avatar_url)
-      `)
+      .select('id, content, image_url, user_id, created_at')
       .single();
     if (error) throw error;
     return data;
@@ -369,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 200));
 
-  // Image upload handling
+  // Image upload
   const fileInput = elements.postImageUpload;
   if (elements.uploadImageLabel && fileInput) {
     elements.uploadImageLabel.addEventListener('click', (e) => {
@@ -426,16 +462,25 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       elements.createPostBtn.disabled = true;
       const newPost = await createPost(content, selectedImageFile);
-      if (newPost) {
-        // Insert new post at the top of the feed
-        const postEl = createPostElement(newPost);
-        elements.postsFeed.prepend(postEl);
-        elements.postInput.value = '';
-        selectedImageFile = null;
-        if (fileInput) fileInput.value = '';
-        if (elements.imagePreview) elements.imagePreview.style.display = 'none';
-        // Update page counter if needed (but not necessary)
-      }
+      // Fetch the current user's profile to build the post element
+      const profile = await getCurrentUserProfile();
+      if (!profile) throw new Error('Could not fetch profile');
+      const postWithProfile = {
+        ...newPost,
+        profiles: {
+          username: profile.username,
+          avatar_url: profile.avatar_url,
+        },
+        likes_count: 0,
+        comments_count: 0,
+        user_liked: false,
+      };
+      const postEl = createPostElement(postWithProfile);
+      elements.postsFeed.prepend(postEl);
+      elements.postInput.value = '';
+      selectedImageFile = null;
+      if (fileInput) fileInput.value = '';
+      if (elements.imagePreview) elements.imagePreview.style.display = 'none';
     } catch (error) {
       console.error('Create post error:', error);
       await showModal({ title: 'Error', message: error.message || 'Failed to create post.', confirmText: 'OK' });
@@ -451,10 +496,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==================== Initialization ====================
   (async function init() {
     const user = await getCurrentUser();
-    if (!user) {
-      // Show a message or redirect to login? We'll still show public feed, but like/comment will prompt login.
-      console.log('User not logged in, showing public feed');
+    if (user) {
+      await getCurrentUserProfile(); // sets avatar
     }
     await loadPosts(currentFeed, 1);
   })();
 });
+
+// Helper to escape HTML
+function escapeHtml(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
