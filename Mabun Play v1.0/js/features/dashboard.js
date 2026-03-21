@@ -5,8 +5,8 @@ import { formatCurrency } from '../utils/formatters.js';
 // DOM elements
 const elements = {
   walletAmount: document.getElementById('wallet-amount'),
-  coinBalance: document.getElementById('coin-balance'),
-  statCoins: document.getElementById('stat-coins-value'),
+  coinBalance: document.getElementById('coin-balance'),          // coin badge
+  statCoins: document.getElementById('stat-coins-value'),       // coins in stats
   userName: document.getElementById('user-name'),
   liveTimer: document.getElementById('live-timer'),
   nextQuizTimer: document.getElementById('next-quiz-timer'),
@@ -63,6 +63,7 @@ async function fetchDashboard() {
     if (userError) throw userError;
     if (!user) throw new Error('Not authenticated');
 
+    // Fetch profile (includes coins)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('username, winnings, played, rank, wallet_balance, coins_balance')
@@ -83,17 +84,20 @@ async function fetchDashboard() {
     state.user.played = profile.played || 0;
     state.user.rank = profile.rank || 0;
     state.user.wallet = profile.wallet_balance || 0;
-    state.user.coins = profile.coins_balance || 15000;
+    state.user.coins = profile.coins_balance || 15000;   // default 15000
 
-    // Live quiz (hourly)
+    // 1. Try to fetch active hourly quiz from database
     const { data: liveQuiz, error: liveError } = await supabase
       .from('quizzes')
       .select('id, title, prize_pool, current_quiz_ends_at, next_quiz_starts_at, status, participant_count')
       .eq('type', 'hourly')
       .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (!liveError && liveQuiz) {
+      // Use the real quiz from database
       state.liveQuiz = {
         id: liveQuiz.id,
         title: liveQuiz.title,
@@ -105,19 +109,42 @@ async function fetchDashboard() {
         hasPaid: false,
         participantCount: liveQuiz.participant_count,
       };
+      console.log('✅ Using real quiz from DB:', state.liveQuiz.id);
     } else {
-      // Fallback quiz (hardcoded ID)
+      // Fallback to the hardcoded 9:40 PM quiz (ID: a1b2c3d4-e5f6-7890-1234-567890abcdef)
+      // Set timers relative to current time for realistic display.
+      const now = new Date();
+      const startTime = new Date('2026-03-21T21:40:00+00:00');
+      const endTime = new Date('2026-03-21T21:56:40+00:00');
+      // If the start time is already in the past, use now as start for demo.
+      if (now > startTime) {
+        // Quiz already started – use the actual remaining time based on end time
+        const remainingMs = endTime - now;
+        if (remainingMs > 0) {
+          state.liveQuiz.currentQuizEndsAt = endTime.toISOString();
+          state.liveQuiz.nextQuizStartsAt = startTime.toISOString();
+        } else {
+          // Quiz already ended – fallback to a dummy future quiz
+          state.liveQuiz.currentQuizEndsAt = new Date(now.getTime() + 40 * 60 * 1000).toISOString();
+          state.liveQuiz.nextQuizStartsAt = new Date(now.getTime() + 40 * 60 * 1000).toISOString();
+        }
+      } else {
+        // Not started yet – use original times
+        state.liveQuiz.currentQuizEndsAt = endTime.toISOString();
+        state.liveQuiz.nextQuizStartsAt = startTime.toISOString();
+      }
       state.liveQuiz = {
-        id: '7c3f555e-c397-4fbb-8667-3bdd5fa23f40',
+        id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
         title: 'General Knowledge Hourly',
         prizePool: 10000,
-        currentQuizEndsAt: new Date(Date.now() + 40 * 60 * 1000).toISOString(),
-        nextQuizStartsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        currentQuizEndsAt: state.liveQuiz.currentQuizEndsAt,
+        nextQuizStartsAt: state.liveQuiz.nextQuizStartsAt,
         canPay: true,
         canJoin: true,
         hasPaid: false,
         participantCount: 0,
       };
+      console.warn('⚠️ No active hourly quiz found, using fallback (9:40 PM)');
     }
 
     // Daily challenge
@@ -125,6 +152,8 @@ async function fetchDashboard() {
       .from('challenges')
       .select('prize_pool, payout_time')
       .eq('type', 'daily')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (!dailyError && daily) {
       state.dailyChallenge.prizePool = daily.prize_pool;
@@ -143,6 +172,8 @@ async function fetchDashboard() {
       .from('challenges')
       .select('prize_pool, ends_at, payout_time')
       .eq('type', 'weekly')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (!weeklyError && weekly) {
       state.weeklyChallenge.prizePool = weekly.prize_pool;
@@ -169,6 +200,7 @@ async function fetchDashboard() {
     renderAll();
     updateTimers();
 
+    // Subscribe to live quiz updates
     if (state.liveQuiz.id) {
       if (quizSubscription) quizSubscription.unsubscribe();
       quizSubscription = supabase
@@ -376,7 +408,6 @@ async function handleChallengeEntry(e) {
     if (error) throw error;
     if (data.error) throw new Error(data.error);
 
-    // Update local coin balance
     state.user.coins = data.new_balance;
     renderUser();
 
