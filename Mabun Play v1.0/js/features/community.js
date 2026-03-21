@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // ---------- Ensure the current user has a profile (create if missing) ----------
+  // ---------- Ensure current user has a profile ----------
   async function ensureCurrentUserProfile() {
     if (!currentUserId) return;
     const { data: existing, error } = await supabase
@@ -78,25 +78,20 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     if (!existing) {
-      // Get user email from auth
       const { data: { user } } = await supabase.auth.getUser();
       const username = user.email ? user.email.split('@')[0] : `user_${currentUserId.slice(0, 8)}`;
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert({
-          id: currentUserId,
-          username,
-          email: user.email,
-          phone: null,
-          provider: null,
-          avatar_url: null,
-          winnings: 0,
-          played: 0,
-          rank: 0,
-          wallet_balance: 0,
-        });
-      if (insertError) console.error('Failed to create profile:', insertError);
-      else console.log('Created missing profile for current user');
+      await supabase.from('profiles').insert({
+        id: currentUserId,
+        username,
+        email: user.email,
+        phone: null,
+        provider: null,
+        avatar_url: null,
+        winnings: 0,
+        played: 0,
+        rank: 0,
+        wallet_balance: 0,
+      });
     }
   }
 
@@ -105,8 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return null;
     currentUserId = user.id;
-    await ensureCurrentUserProfile(); // ensure profile exists
-    await getCurrentUserProfile();   // fetch it
+    await ensureCurrentUserProfile();
+    await getCurrentUserProfile();
     return user;
   }
 
@@ -123,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return null;
     }
     currentUserProfile = data;
-    // Update avatar in create‑post card
     if (elements.postAvatar) {
       elements.postAvatar.src = currentUserProfile.avatar_url || '/assets/images/default-avatar.png';
     }
@@ -140,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return data.map(f => f.following_id);
   }
 
-  // ---------- Fetch Profiles for a list of user IDs ----------
   async function fetchProfiles(userIds) {
     if (!userIds.length) return {};
     const { data, error } = await supabase
@@ -195,11 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (posts.length === 0 && pageNum === 1) {
         elements.postsFeed.innerHTML = '<div class="empty-state">No posts yet. Be the first!</div>';
       } else {
-        // Fetch profiles for all users in posts
         const userIds = [...new Set(posts.map(p => p.user_id))];
         const profileMap = await fetchProfiles(userIds);
-
-        // Check likes for current user
         const likedMap = {};
         if (currentUserId) {
           const { data: likes } = await supabase
@@ -207,9 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .select('post_id')
             .eq('user_id', currentUserId)
             .in('post_id', posts.map(p => p.id));
-          if (likes) {
-            likes.forEach(like => { likedMap[like.post_id] = true; });
-          }
+          if (likes) likes.forEach(like => { likedMap[like.post_id] = true; });
         }
 
         for (const post of posts) {
@@ -274,11 +262,24 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="comments-section" style="display: none;">
         <div class="comments-list" id="comments-${post.id}"></div>
         <div class="add-comment">
-          <input type="text" class="comment-input" placeholder="Write a comment..." data-post-id="${post.id}">
-          <button class="comment-submit" data-post-id="${post.id}">Post</button>
+          <div class="reply-context" style="display: none;">
+            <span>Replying to <strong class="reply-username"></strong></span>
+            <button class="cancel-reply">Cancel</button>
+          </div>
+          <div class="comment-input-wrapper">
+            <input type="text" class="comment-input" placeholder="Write a comment..." data-post-id="${post.id}">
+            <button class="comment-submit" data-post-id="${post.id}">Post</button>
+          </div>
         </div>
       </div>
     `;
+
+    // Store reply context for this post
+    div.replyContext = {
+      active: false,
+      parentId: null,
+      parentUsername: null,
+    };
 
     // Like button
     const likeBtn = div.querySelector('.like-btn');
@@ -327,157 +328,77 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Comment submit
-    const commentInput = div.querySelector('.comment-input');
-    const commentSubmit = div.querySelector('.comment-submit');
-    commentSubmit.addEventListener('click', async () => {
-      if (!currentUserId) {
-        await showModal({ title: 'Login Required', message: 'Please log in to comment.', confirmText: 'OK' });
-        return;
-      }
-      const text = commentInput.value.trim();
-      if (!text) return;
-      try {
-        await supabase.from('comments').insert({
-          post_id: post.id,
-          user_id: currentUserId,
-          text,
-        });
-        commentInput.value = '';
-        await loadComments(post.id);
-        const countSpan = commentToggle.querySelector('span');
-        countSpan.textContent = parseInt(countSpan.textContent) + 1;
-      } catch (error) {
-        showModal({ title: 'Error', message: error.message, confirmText: 'OK' });
-      }
-    });
-
     return div;
   }
 
-  // ---------- Load Comments (with nested replies) ----------
+  // ---------- Load Comments (nested, without inline reply forms) ----------
   async function loadComments(postId) {
-  try {
-    const { data: comments, error } = await supabase
-      .from('comments')
-      .select('id, text, user_id, created_at, parent_id')
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true });
+    try {
+      const { data: comments, error } = await supabase
+        .from('comments')
+        .select('id, text, user_id, created_at, parent_id')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const commentsList = document.getElementById(`comments-${postId}`);
-    if (!commentsList) return;
+      const commentsList = document.getElementById(`comments-${postId}`);
+      if (!commentsList) return;
 
-    if (!comments || comments.length === 0) {
-      commentsList.innerHTML = '<p class="no-comments">No comments yet.</p>';
-      return;
-    }
-
-    // Fetch profiles for all comment authors
-    const userIds = [...new Set(comments.map(c => c.user_id))];
-    const profileMap = await fetchProfiles(userIds); // fetchProfiles must be defined
-
-    // Build comment tree
-    const commentMap = {};
-    comments.forEach(comment => {
-      commentMap[comment.id] = {
-        ...comment,
-        profile: profileMap[comment.user_id] || { username: 'Unknown', avatar_url: null },
-        replies: [],
-      };
-    });
-
-    const topLevelComments = [];
-    for (const id in commentMap) {
-      const c = commentMap[id];
-      if (c.parent_id && commentMap[c.parent_id]) {
-        commentMap[c.parent_id].replies.push(c);
-      } else {
-        topLevelComments.push(c);
-      }
-    }
-
-    // Recursive render function
-    function renderComment(comment, level = 0) {
-      const marginLeft = level * 20;
-      return `
-        <div class="comment" style="margin-left: ${marginLeft}px">
-          <a href="profile.html?userId=${comment.user_id}" class="comment-avatar-link">
-            <img src="${comment.profile.avatar_url || '/assets/images/default-avatar.png'}" alt="" class="comment-avatar">
-          </a>
-          <div class="comment-body">
-            <a href="profile.html?userId=${comment.user_id}" class="comment-author">${escapeHtml(comment.profile.username)}</a>
-            <span class="comment-text">${escapeHtml(comment.text)}</span>
-            <span class="comment-time">${formatTime(comment.created_at)}</span>
-            <button class="reply-btn" data-comment-id="${comment.id}" data-post-id="${postId}">Reply</button>
-          </div>
-          <div class="reply-input-container" style="display: none;">
-            <div class="reply-input-wrapper">
-              <input type="text" class="reply-input" placeholder="Write a reply...">
-              <button class="reply-submit">Post Reply</button>
-            </div>
-          </div>
-        </div>
-        ${comment.replies.map(reply => renderComment(reply, level + 1)).join('')}
-      `;
-    }
-
-    commentsList.innerHTML = topLevelComments.map(c => renderComment(c, 0)).join('');
-
-    // ----- Event delegation for reply actions -----
-    commentsList.removeEventListener('click', handleCommentClicks);
-    commentsList.addEventListener('click', handleCommentClicks);
-
-    function handleCommentClicks(e) {
-      // Reply button clicked
-      const replyBtn = e.target.closest('.reply-btn');
-      if (replyBtn) {
-        e.preventDefault();
-        const container = replyBtn.closest('.comment-body').nextElementSibling;
-        if (container) {
-          // Toggle display
-          container.style.display = container.style.display === 'none' ? 'block' : 'none';
-        }
+      if (!comments || comments.length === 0) {
+        commentsList.innerHTML = '<p class="no-comments">No comments yet.</p>';
         return;
       }
 
-      // Reply submit button clicked
-      const submitBtn = e.target.closest('.reply-submit');
-      if (submitBtn) {
-        e.preventDefault();
-        const container = submitBtn.closest('.reply-input-container');
-        const input = container.querySelector('.reply-input');
-        const text = input.value.trim();
-        if (!text) return;
-        const parentCommentId = container.closest('.comment').querySelector('.reply-btn')?.dataset.commentId;
-        if (!parentCommentId) return;
-        (async () => {
-          try {
-            await supabase.from('comments').insert({
-              post_id: postId,
-              user_id: currentUserId,
-              text,
-              parent_id: parentCommentId,
-            });
-            input.value = '';
-            container.style.display = 'none';
-            await loadComments(postId); // reload comments to show the new reply
-            // Update comment count on the post
-            const commentToggle = document.querySelector(`.post-card[data-post-id="${postId}"] .comment-toggle span`);
-            if (commentToggle) {
-              commentToggle.textContent = parseInt(commentToggle.textContent) + 1;
-            }
-          } catch (error) {
-            showModal({ title: 'Error', message: error.message, confirmText: 'OK' });
-          }
-        })();
+      // Fetch profiles for all comment authors
+      const userIds = [...new Set(comments.map(c => c.user_id))];
+      const profileMap = await fetchProfiles(userIds);
+
+      // Build comment tree
+      const commentMap = {};
+      comments.forEach(comment => {
+        commentMap[comment.id] = {
+          ...comment,
+          profile: profileMap[comment.user_id] || { username: 'Unknown', avatar_url: null },
+          replies: [],
+        };
+      });
+
+      const topLevelComments = [];
+      for (const id in commentMap) {
+        const c = commentMap[id];
+        if (c.parent_id && commentMap[c.parent_id]) {
+          commentMap[c.parent_id].replies.push(c);
+        } else {
+          topLevelComments.push(c);
+        }
       }
+
+      // Render recursively
+      function renderComment(comment, level = 0) {
+        const marginLeft = level * 20;
+        return `
+          <div class="comment" style="margin-left: ${marginLeft}px">
+            <a href="profile.html?userId=${comment.user_id}" class="comment-avatar-link">
+              <img src="${comment.profile.avatar_url || '/assets/images/default-avatar.png'}" alt="" class="comment-avatar">
+            </a>
+            <div class="comment-body">
+              <a href="profile.html?userId=${comment.user_id}" class="comment-author">${escapeHtml(comment.profile.username)}</a>
+              <span class="comment-text">${escapeHtml(comment.text)}</span>
+              <span class="comment-time">${formatTime(comment.created_at)}</span>
+              <button class="reply-btn" data-comment-id="${comment.id}" data-post-id="${postId}">Reply</button>
+            </div>
+          </div>
+          ${comment.replies.map(reply => renderComment(reply, level + 1)).join('')}
+        `;
+      }
+
+      commentsList.innerHTML = topLevelComments.map(c => renderComment(c, 0)).join('');
+    } catch (error) {
+      console.error('Failed to load comments:', error);
     }
-  } catch (error) {
-    console.error('Failed to load comments:', error);
   }
-}
+
   // ---------- Create a New Post ----------
   async function createPost(content, imageFile) {
     let imageUrl = null;
@@ -505,7 +426,88 @@ document.addEventListener('DOMContentLoaded', () => {
     return data;
   }
 
-  // ---------- Event Listeners ----------
+  // ---------- Global Click Handler for Reply, Cancel, Comment Submit ----------
+  elements.postsFeed.addEventListener('click', async (e) => {
+    // Reply button clicked
+    const replyBtn = e.target.closest('.reply-btn');
+    if (replyBtn) {
+      e.preventDefault();
+      const postDiv = replyBtn.closest('.post-card');
+      const parentCommentId = replyBtn.dataset.commentId;
+      const parentUsername = replyBtn.closest('.comment-body').querySelector('.comment-author').innerText;
+      postDiv.replyContext.active = true;
+      postDiv.replyContext.parentId = parentCommentId;
+      postDiv.replyContext.parentUsername = parentUsername;
+      const addCommentDiv = postDiv.querySelector('.add-comment');
+      const contextBanner = addCommentDiv.querySelector('.reply-context');
+      const usernameSpan = contextBanner.querySelector('.reply-username');
+      usernameSpan.innerText = parentUsername;
+      contextBanner.style.display = 'flex';
+      const input = addCommentDiv.querySelector('.comment-input');
+      input.placeholder = `Reply to ${parentUsername}...`;
+      input.focus();
+      return;
+    }
+
+    // Cancel reply button clicked
+    const cancelBtn = e.target.closest('.cancel-reply');
+    if (cancelBtn) {
+      e.preventDefault();
+      const postDiv = cancelBtn.closest('.post-card');
+      postDiv.replyContext.active = false;
+      postDiv.replyContext.parentId = null;
+      postDiv.replyContext.parentUsername = null;
+      const addCommentDiv = postDiv.querySelector('.add-comment');
+      const contextBanner = addCommentDiv.querySelector('.reply-context');
+      contextBanner.style.display = 'none';
+      const input = addCommentDiv.querySelector('.comment-input');
+      input.placeholder = 'Write a comment...';
+      return;
+    }
+
+    // Comment submit button clicked
+    const submitBtn = e.target.closest('.comment-submit');
+    if (submitBtn) {
+      e.preventDefault();
+      const postDiv = submitBtn.closest('.post-card');
+      const input = postDiv.querySelector('.comment-input');
+      const text = input.value.trim();
+      if (!text) return;
+      let parentId = null;
+      if (postDiv.replyContext.active) {
+        parentId = postDiv.replyContext.parentId;
+      }
+      try {
+        await supabase.from('comments').insert({
+          post_id: postDiv.dataset.postId,
+          user_id: currentUserId,
+          text,
+          parent_id: parentId,
+        });
+        // Reset reply context
+        postDiv.replyContext.active = false;
+        postDiv.replyContext.parentId = null;
+        postDiv.replyContext.parentUsername = null;
+        const addCommentDiv = postDiv.querySelector('.add-comment');
+        const contextBanner = addCommentDiv.querySelector('.reply-context');
+        contextBanner.style.display = 'none';
+        input.value = '';
+        input.placeholder = 'Write a comment...';
+        // Reload comments for this post
+        await loadComments(postDiv.dataset.postId);
+        // Update comment count
+        const commentToggle = postDiv.querySelector('.comment-toggle span');
+        if (commentToggle) {
+          commentToggle.textContent = parseInt(commentToggle.textContent) + 1;
+        }
+      } catch (error) {
+        showModal({ title: 'Error', message: error.message, confirmText: 'OK' });
+      }
+      return;
+    }
+  });
+
+  // ---------- Feed Tabs ----------
   elements.feedTabs.forEach(tab => {
     tab.addEventListener('click', () => {
       elements.feedTabs.forEach(t => t.classList.remove('active'));
@@ -518,6 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // ---------- Infinite Scroll ----------
   window.addEventListener('scroll', throttle(() => {
     if (loading || !hasMore) return;
     const scrollY = window.scrollY;
@@ -527,7 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 200));
 
-  // Image upload handling
+  // ---------- Image Upload Handling ----------
   const fileInput = elements.postImageUpload;
   if (elements.uploadImageLabel && fileInput) {
     elements.uploadImageLabel.addEventListener('click', (e) => {
@@ -569,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ---------- Create Post Button ----------
   elements.createPostBtn.addEventListener('click', async (e) => {
     e.preventDefault();
     if (!currentUserId) {
@@ -609,6 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ---------- Back to Top ----------
   elements.backToTopBtn.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
@@ -617,7 +622,6 @@ document.addEventListener('DOMContentLoaded', () => {
   (async function init() {
     const user = await getCurrentUser();
     if (user) {
-      // Ensure profile exists (already done in getCurrentUser)
       await getCurrentUserProfile();
     }
     await loadPosts(currentFeed, 1);
