@@ -1,6 +1,5 @@
 // js/core/app.js
-
-import { setupAuthGuard } from './guards.js';
+import { setupAuthGuard, PUBLIC_PAGES, waitForUser } from './guards.js';
 
 // ==============================
 // 🔧 CONFIG
@@ -9,7 +8,7 @@ const isLocal =
   window.location.hostname === 'localhost' ||
   window.location.hostname === '127.0.0.1';
 
-// 🚫 Disable Service Worker for now (prevents caching/auth issues)
+// 🚫 Disable Service Worker during development
 if ('serviceWorker' in navigator && !isLocal) {
   console.log('Service Worker disabled during development');
   /*
@@ -31,7 +30,7 @@ window.addEventListener('error', (event) => {
 // ==============================
 // ⏳ WAIT FOR SUPABASE CLIENT
 // ==============================
-function waitForSupabase() {
+export function waitForSupabase() {
   return new Promise((resolve) => {
     if (window.supabaseClient) return resolve(window.supabaseClient);
 
@@ -45,49 +44,24 @@ function waitForSupabase() {
 }
 
 // ==============================
-// 📄 PUBLIC PAGES (NO AUTH LOGIC)
-// ==============================
-const PUBLIC_PAGES = [
-  'index.html',
-  'login.html',
-  'register.html',
-  'forgot-password.html',
-  'reset-password.html',
-  'complete-profile.html',
-  'privacy.html',
-  'terms.html',
-  'support.html'
-];
-
-// ==============================
 // 🔐 INIT APP (MAIN ENTRY)
 // ==============================
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const supabase = await waitForSupabase();
 
-    const currentPath =
-      window.location.pathname.split('/').pop() || 'index.html';
+    // ==============================
+    // 🔄 AUTH GUARD
+    // ==============================
+    await setupAuthGuard();
 
-    // 🚀 CRITICAL FIX: Skip ALL auth logic on public pages
-    if (PUBLIC_PAGES.includes(currentPath)) {
-      console.log('✅ Public page detected, skipping auth guard:', currentPath);
+    // Redirect logged-in users away from login/register
+    const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+    const user = await waitForUser();
+    if (user && ['login.html', 'register.html'].includes(currentPath)) {
+      console.log('User already logged in → redirect to dashboard');
+      window.location.href = 'dashboard.html';
       return;
-    }
-
-    // ==============================
-    // 🔒 PRIVATE PAGE LOGIC ONLY
-    // ==============================
-    const { data, error } = await supabase.auth.getSession();
-
-    if (error) {
-      console.error('Error getting session:', error.message);
-    }
-
-    // Prevent multiple guard executions
-    if (!window.__authGuardInitialized) {
-      window.__authGuardInitialized = true;
-      await setupAuthGuard();
     }
 
     // ==============================
@@ -105,12 +79,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==============================
     const header = document.querySelector('.app-bar');
     const main = document.querySelector('.main-content');
-
     if (header && main) {
       const firstChild = main.children[1];
       if (firstChild) firstChild.style.marginTop = '0';
     }
 
+    console.log('✅ App initialized');
   } catch (err) {
     console.error('App initialization error:', err);
   }
@@ -121,11 +95,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ==============================
 waitForSupabase().then((supabase) => {
   supabase.auth.onAuthStateChange((event, session) => {
-    // 🚀 CRITICAL FIX: Ignore initial trigger (prevents refresh loop)
-    if (event === 'INITIAL_SESSION') return;
-
-    console.log('Auth event:', event);
-
     try {
       if (session?.user) {
         localStorage.setItem('mabun_user', JSON.stringify(session.user));
@@ -134,6 +103,7 @@ waitForSupabase().then((supabase) => {
         localStorage.removeItem('mabun_user');
         localStorage.removeItem('mabun_token');
       }
+      console.log('Auth event:', event);
     } catch (err) {
       console.error('Auth state error:', err);
     }
