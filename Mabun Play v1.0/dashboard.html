@@ -9,11 +9,11 @@
   <!-- Supabase client (UMD) -->
   <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
-  window.supabaseClient = window.supabase.createClient(
-    'https://dfgqqjwknctmwrodcsnb.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmZ3FxandrbmN0bXdyb2Rjc25iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwODA3NzQsImV4cCI6MjA4OTY1Njc3NH0.2HtPMuVokKHSgzLUY6ChS7Wcj2dmAUHmutlS_86X2M4'
-  );
-</script>
+    window.supabaseClient = window.supabase.createClient(
+      'https://dfgqqjwknctmwrodcsnb.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmZ3FxandrbmN0bXdyb2Rjc25iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwODA3NzQsImV4cCI6MjA4OTY1Njc3NH0.2HtPMuVokKHSgzLUY6ChS7Wcj2dmAUHmutlS_86X2M4'
+    );
+  </script>
   <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
   <!-- Font Awesome (for auto‑subscribe icon) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
@@ -25,15 +25,15 @@
 <body>
   <div class="app-layout">
     <!-- Sidebar Navigation -->
-        <nav class="sidebar-nav">
+    <nav class="sidebar-nav">
       <a href="dashboard.html" class="nav-item">
         <iconify-icon icon="solar:home-smile-bold" class="nav-icon"></iconify-icon>
         <span>Home</span>
       </a>
-     <a href="community.html" class="nav-item">
-  <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
-  <span>Community</span>
-</a>
+      <a href="community.html" class="nav-item">
+        <iconify-icon icon="solar:users-group-rounded-outline" class="nav-icon"></iconify-icon>
+        <span>Community</span>
+      </a>
       <a href="leaderboard.html" class="nav-item">
         <iconify-icon icon="solar:cup-linear" class="nav-icon"></iconify-icon>
         <span>Rank</span>
@@ -42,19 +42,14 @@
         <iconify-icon icon="solar:wallet-linear" class="nav-icon"></iconify-icon>
         <span>Wallet</span>
       </a>
-          <!-- Inside the app-bar-actions, next to wallet badge -->
-<a href="wallet.html" class="coin-badge" aria-label="Mabun coins">
-  <iconify-icon icon="solar:gold-bold"></iconify-icon>
-  <span id="coin-balance">0</span>
-</a>
       <a href="profile.html" class="nav-item">
         <iconify-icon icon="solar:user-rounded-linear" class="nav-icon"></iconify-icon>
         <span>Profile</span>
       </a>
       <a href="settings.html" class="nav-item">
-  <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
-  <span>Settings</span>
-</a>
+        <iconify-icon icon="solar:settings-outline" class="nav-icon"></iconify-icon>
+        <span>Settings</span>
+      </a>
     </nav>
 
     <!-- Main Content Area -->
@@ -63,7 +58,12 @@
       <header class="app-bar">
         <img src="assets/images/logo.png" alt="Mabun Quiz" class="app-logo">
         <div class="app-bar-actions">
-          <!-- Wallet Badge -->
+          <!-- Coin Badge (Mabun coins) -->
+          <a href="wallet.html" class="coin-badge" aria-label="Mabun coins">
+            <iconify-icon icon="solar:gold-bold"></iconify-icon>
+            <span id="coin-balance">0</span>
+          </a>
+          <!-- Wallet Badge (real money) -->
           <a href="wallet.html" class="wallet-badge" aria-label="Wallet balance">
             <iconify-icon icon="solar:wallet-bold"></iconify-icon>
             <span id="wallet-amount">0.00</span>
@@ -88,7 +88,7 @@
           <p class="greeting-subtitle">Ready to win today?</p>
         </section>
 
-        <!-- Four Entry Tiers -->
+        <!-- Four Entry Tiers (with coin fees) -->
         <div class="cards-container">
           <!-- 1. Hourly Quiz (Live) -->
           <div class="card-live">
@@ -109,14 +109,14 @@
                 <span class="live-prize-dot"></span> Live
               </span>
             </div>
-            <div class="entry-fee">Entry Fee: <strong>1,000 SSP</strong></div>
+            <div class="entry-fee">Entry Fee: <strong>100 Coins</strong></div>
             <div class="next-quiz-info">
               <iconify-icon icon="solar:clock-circle-linear"></iconify-icon>
               <span>Next quiz in <span id="next-quiz-timer">00:00</span></span>
             </div>
             <!-- Two‑step action buttons -->
             <div class="hourly-actions">
-              <button class="btn btn-pay" id="pay-entry-fee" aria-label="Pay entry fee">Pay Entry Fee</button>
+              <button class="btn btn-pay" id="pay-entry-fee" aria-label="Pay entry fee">Use 100 Coins</button>
               <button class="btn btn-live-join" id="join-hourly-quiz" disabled aria-label="Join quiz">Join Now</button>
             </div>
           </div>
@@ -145,8 +145,8 @@
                 <span class="live-prize-dot"></span> Live
               </span>
             </div>
-            <div class="entry-fee">Entry Fee: <strong>2,000 SSP</strong></div>
-            <button class="btn-outline js-challenge-entry" data-challenge="daily" data-fee="2000" role="button">Enter Challenge</button>
+            <div class="entry-fee">Entry Fee: <strong>200 Coins</strong></div>
+            <button class="btn-outline js-challenge-entry" data-challenge="daily" data-fee="200" role="button">Enter Challenge</button>
           </div>
 
           <!-- 3. Weekly Challenge -->
@@ -173,11 +173,11 @@
                 <span class="live-prize-dot"></span> Live
               </span>
             </div>
-            <div class="entry-fee">Entry Fee: <strong>3,000 SSP</strong></div>
-            <button class="btn-outline js-challenge-entry" data-challenge="weekly" data-fee="3000" role="button">Enter Challenge</button>
+            <div class="entry-fee">Entry Fee: <strong>500 Coins</strong></div>
+            <button class="btn-outline js-challenge-entry" data-challenge="weekly" data-fee="500" role="button">Enter Challenge</button>
           </div>
 
-          <!-- 4. Daily Auto-Subscribe -->
+          <!-- 4. Daily Auto-Subscribe (optional) -->
           <div class="challenge-card accent-subscribe">
             <div class="challenge-header">
               <div class="challenge-icon subscribe">
@@ -190,12 +190,12 @@
               <iconify-icon icon="solar:calendar-mark-bold"></iconify-icon>
               <span>All daily quizzes, auto‑enter</span>
             </div>
-            <div class="entry-fee">Fee: <strong>15,000 SSP / day</strong></div>
+            <div class="entry-fee">Fee: <strong>15,000 Coins / day</strong></div>
             <button class="btn-outline" id="subscribe-btn">Subscribe Now</button>
           </div>
         </div>
 
-        <!-- Statistics Section -->
+        <!-- Statistics Section (includes coin stats) -->
         <section class="stats-section">
           <h3 class="stats-title">Your Statistics</h3>
           <div class="stats-grid">
@@ -211,7 +211,7 @@
                 <iconify-icon icon="solar:wallet-money-bold"></iconify-icon>
               </div>
               <div class="stat-value" id="stat-winnings-value">0</div>
-              <div class="stat-label">Winnings</div>
+              <div class="stat-label">Winnings (SSP)</div>
             </a>
             <a href="leaderboard.html" class="stat-item" aria-label="Current rank">
               <div class="stat-icon rank">
@@ -220,16 +220,22 @@
               <div class="stat-value" id="stat-rank-value">#0</div>
               <div class="stat-label">Rank</div>
             </a>
+            <div class="stat-item" aria-label="Mabun coins">
+              <div class="stat-icon coins">
+                <iconify-icon icon="solar:gold-bold"></iconify-icon>
+              </div>
+              <div class="stat-value" id="stat-coins-value">0</div>
+              <div class="stat-label">Mabun Coins</div>
+            </div>
           </div>
         </section>
       </div> <!-- end dashboard-main -->
     </main>
   </div> <!-- end app-layout -->
 
-    <!-- Core app script -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <!-- Core app script -->
   <script type="module" src="js/core/app.js"></script>
-  <!-- JavaScript (ES module) -->
+  <!-- Dashboard JavaScript (ES module) -->
   <script type="module" src="js/features/dashboard.js"></script>
 </body>
 </html>
