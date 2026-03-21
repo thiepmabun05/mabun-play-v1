@@ -9,17 +9,17 @@ const elements = {
   timeLeft: document.getElementById('timeLeft'),
   prizePool: document.getElementById('prizePool'),
   leaderboardList: document.getElementById('leaderboardList'),
-  loadingSpinner: document.getElementById('loadingSpinner'),
-  loadMoreContainer: document.getElementById('loadMoreContainer'),
-  loadMoreBtn: document.getElementById('loadMoreBtn'),
 };
 
 let currentType = 'hourly';
-let currentQuizId = null;
-let currentPrizePool = 0;
-let currentEndTime = null;
-let leaderboardSubscription = null;
-let quizSubscription = null;
+let currentData = {
+  id: null,               // for hourly: current quiz ID
+  prizePool: 0,
+  endTime: null,
+  leaderboardTable: null, // 'quiz_leaderboard' or 'challenge_leaderboard'
+  filterField: null,     // 'quiz_id' or 'challenge_type'
+};
+let subscriptions = [];
 let timerInterval = null;
 
 // Prize distribution percentages (top 10)
@@ -36,33 +36,73 @@ const PRIZE_DISTRIBUTION = [
   { rank: 10, percent: 0.05 },
 ];
 
-async function fetchCurrentQuiz() {
+function unsubscribeAll() {
+  subscriptions.forEach(sub => sub.unsubscribe());
+  subscriptions = [];
+  if (timerInterval) clearInterval(timerInterval);
+}
+
+async function fetchCurrent() {
+  const supabase = window.supabaseClient;
+  if (!supabase) return;
+
   try {
-    const supabase = window.supabaseClient;
-    const { data, error } = await supabase
-      .from('quizzes')
-      .select('id, title, prize_pool, next_question_at')
-      .eq('type', currentType)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    if (error) throw error;
-
-    if (data) {
-      currentQuizId = data.id;
-      elements.quizName.textContent = data.title;
-      currentPrizePool = data.prize_pool;
-      elements.prizePool.textContent = formatCurrency(currentPrizePool);
-      currentEndTime = data.next_question_at;
-      startTimer(currentEndTime);
+    if (currentType === 'hourly') {
+      // Get active hourly quiz
+      const { data, error } = await supabase
+        .from('quizzes')
+        .select('id, title, prize_pool, next_question_at')
+        .eq('type', 'hourly')
+        .eq('status', 'active')
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        currentData.id = data.id;
+        currentData.prizePool = data.prize_pool;
+        currentData.endTime = data.next_question_at;
+        currentData.leaderboardTable = 'quiz_leaderboard';
+        currentData.filterField = 'quiz_id';
+        elements.quizName.textContent = data.title;
+        elements.qualifierText.textContent = 'Live updates – scores refresh after each answer';
+      } else {
+        elements.quizName.textContent = 'No active quiz';
+        elements.prizePool.textContent = formatCurrency(0);
+        elements.timeLeft.textContent = '--:--';
+        elements.leaderboardList.innerHTML = '<div class="empty-state">No active hourly quiz</div>';
+        return;
+      }
     } else {
-      // No active quiz of this type
-      elements.quizName.textContent = 'No active quiz';
-      elements.prizePool.textContent = formatCurrency(0);
-      elements.timeLeft.textContent = '--:--';
+      // Daily or weekly challenge
+      const { data, error } = await supabase
+        .from('challenges')
+        .select('prize_pool, ends_at')
+        .eq('type', currentType)
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        currentData.id = null; // not needed for challenges
+        currentData.prizePool = data.prize_pool;
+        currentData.endTime = data.ends_at;
+        currentData.leaderboardTable = 'challenge_leaderboard';
+        currentData.filterField = 'challenge_type';
+        elements.quizName.textContent = `${currentType.charAt(0).toUpperCase() + currentType.slice(1)} Challenge`;
+        elements.qualifierText.textContent = 'Cumulative scores over the period';
+      } else {
+        elements.quizName.textContent = 'No active challenge';
+        elements.prizePool.textContent = formatCurrency(0);
+        elements.timeLeft.textContent = '--:--';
+        elements.leaderboardList.innerHTML = '<div class="empty-state">No active challenge</div>';
+        return;
+      }
     }
+
+    elements.prizePool.textContent = `${currentData.prizePool.toLocaleString()} Coins`;
+    startTimer(currentData.endTime);
+    await fetchLeaderboard();
+    subscribeToLeaderboard();
   } catch (err) {
-    console.error('Error fetching current quiz:', err);
+    console.error('Error fetching current:', err);
+    showModal({ title: 'Error', message: err.message, confirmText: 'OK' });
   }
 }
 
@@ -84,43 +124,54 @@ function startTimer(endTimeISO) {
 }
 
 async function fetchLeaderboard() {
-  if (!currentQuizId) return;
   const supabase = window.supabaseClient;
-  const { data, error } = await supabase
-    .from('quiz_leaderboard')
-    .select('user_id, username, avatar_url, score')
-    .eq('quiz_id', currentQuizId)
-    .order('score', { ascending: false })
-    .limit(100);
+  if (!supabase || !currentData.leaderboardTable) return;
 
-  if (error) {
-    console.error('Error fetching leaderboard:', error);
-    return;
+  try {
+    let query = supabase
+      .from(currentData.leaderboardTable)
+      .select('*')
+      .order('score', { ascending: false })      // for hourly, 'score'; for challenge, 'total_score'
+      .limit(100);
+
+    if (currentData.filterField === 'quiz_id') {
+      query = query.eq('quiz_id', currentData.id);
+    } else {
+      query = query.eq('challenge_type', currentType);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    renderLeaderboard(data || []);
+  } catch (err) {
+    console.error('Error fetching leaderboard:', err);
   }
-
-  renderLeaderboard(data);
 }
 
 function renderLeaderboard(players) {
   const listEl = elements.leaderboardList;
   if (!listEl) return;
 
-  if (!players || players.length === 0) {
-    listEl.innerHTML = '<div class="empty-state">No participants yet. Be the first to join!</div>';
+  if (!players.length) {
+    listEl.innerHTML = '<div class="empty-state">No participants yet. Be the first!</div>';
     return;
   }
+
+  // Determine the score field name based on table
+  const scoreKey = currentData.leaderboardTable === 'quiz_leaderboard' ? 'score' : 'total_score';
 
   // Compute ranks and prize amounts
   const ranked = players.map((player, idx) => {
     const rank = idx + 1;
     let prize = 0;
     const dist = PRIZE_DISTRIBUTION.find(d => d.rank === rank);
-    if (dist) prize = Math.floor(currentPrizePool * dist.percent);
-    return { ...player, rank, prize };
+    if (dist) prize = Math.floor(currentData.prizePool * dist.percent);
+    const score = player[scoreKey];
+    return { ...player, rank, prize, score };
   });
 
   listEl.innerHTML = ranked.map(player => `
-    <div class="leaderboard-item ${player.isCurrentUser ? 'current-user' : ''}">
+    <div class="leaderboard-item">
       <div class="rank rank-${player.rank}">
         ${player.rank === 1 ? '<iconify-icon icon="solar:medal-star-bold"></iconify-icon>' : 
           player.rank === 2 ? '<iconify-icon icon="solar:medal-ribbon-bold"></iconify-icon>' :
@@ -130,71 +181,41 @@ function renderLeaderboard(players) {
         <img src="${player.avatar_url || '/assets/images/default-avatar.png'}" alt="${player.username}">
       </div>
       <div class="player-info">
-        <div class="player-name">${player.username}</div>
+        <div class="player-name">${escapeHtml(player.username)}</div>
       </div>
       <div class="score-prize">
         <span class="score">${player.score} pts</span>
-        ${player.prize > 0 ? `<span class="prize">${formatCurrency(player.prize)}</span>` : ''}
+        ${player.prize > 0 ? `<span class="prize">${player.prize.toLocaleString()} Coins</span>` : ''}
       </div>
     </div>
   `).join('');
 }
 
 function subscribeToLeaderboard() {
-  if (leaderboardSubscription) {
-    leaderboardSubscription.unsubscribe();
-  }
-  if (!currentQuizId) return;
+  unsubscribeAll();
+  if (!currentData.leaderboardTable) return;
+
   const supabase = window.supabaseClient;
-  leaderboardSubscription = supabase
-    .channel(`leaderboard-${currentQuizId}`)
+  let channelName = `leaderboard-${currentType}`;
+  let filter = currentData.filterField === 'quiz_id' ? `quiz_id=eq.${currentData.id}` : `challenge_type=eq.${currentType}`;
+
+  const subscription = supabase
+    .channel(channelName)
     .on(
       'postgres_changes',
       {
         event: '*',
         schema: 'public',
-        table: 'quiz_leaderboard',
-        filter: `quiz_id=eq.${currentQuizId}`,
+        table: currentData.leaderboardTable,
+        filter: filter,
       },
-      (payload) => {
-        // Re-fetch leaderboard on any change
-        fetchLeaderboard();
+      () => {
+        fetchLeaderboard();  // re-fetch on any change
       }
     )
     .subscribe();
-}
 
-function subscribeToQuiz() {
-  if (quizSubscription) {
-    quizSubscription.unsubscribe();
-  }
-  if (!currentQuizId) return;
-  const supabase = window.supabaseClient;
-  quizSubscription = supabase
-    .channel(`quiz-${currentQuizId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'quizzes',
-        filter: `id=eq.${currentQuizId}`,
-      },
-      (payload) => {
-        // Update prize pool and timer
-        if (payload.new.prize_pool !== undefined) {
-          currentPrizePool = payload.new.prize_pool;
-          elements.prizePool.textContent = formatCurrency(currentPrizePool);
-          // Re‑render leaderboard to reflect new prize amounts
-          fetchLeaderboard();
-        }
-        if (payload.new.next_question_at) {
-          currentEndTime = payload.new.next_question_at;
-          startTimer(currentEndTime);
-        }
-      }
-    )
-    .subscribe();
+  subscriptions.push(subscription);
 }
 
 async function switchType(type) {
@@ -202,21 +223,22 @@ async function switchType(type) {
   elements.typeBtns.forEach(btn => {
     btn.classList.toggle('active', btn.dataset.type === type);
   });
-  // Reset UI
-  elements.leaderboardList.innerHTML = '<div class="loading-spinner">Loading...</div>';
-  await fetchCurrentQuiz();
-  if (currentQuizId) {
-    await fetchLeaderboard();
-    subscribeToLeaderboard();
-    subscribeToQuiz();
-  } else {
-    elements.leaderboardList.innerHTML = '<div class="empty-state">No active quiz available</div>';
-  }
+  await fetchCurrent();
+}
+
+// Helper to escape HTML
+function escapeHtml(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Initialization
 (async function init() {
-  // Wait for Supabase client
   let retries = 0;
   while (!window.supabaseClient && retries < 20) {
     await new Promise(r => setTimeout(r, 50));
@@ -227,11 +249,9 @@ async function switchType(type) {
     return;
   }
 
-  // Set up type switcher
   elements.typeBtns.forEach(btn => {
     btn.addEventListener('click', () => switchType(btn.dataset.type));
   });
 
-  // Load initial data
   await switchType('hourly');
 })();
