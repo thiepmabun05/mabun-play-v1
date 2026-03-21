@@ -451,20 +451,15 @@
   cursor: pointer;
 }
 
-/* ---------- Comments Section ---------- */
-.comments-section {
-  margin-top: var(--space-m);
-}
-
-/* Individual comment container */
+/* ---------- Comments ---------- */
 .comment {
   display: flex;
   gap: var(--space-s);
   margin-bottom: var(--space-m);
   max-width: 100%;
+  overflow-x: hidden;
 }
 
-/* Avatar on the left */
 .comment-avatar-link {
   flex-shrink: 0;
   width: 36px;
@@ -477,105 +472,64 @@
   object-fit: cover;
 }
 
-/* Comment bubble */
 .comment-body {
   flex: 1;
   background: var(--muted);
   border-radius: 18px;
   padding: var(--space-s) var(--space-m);
-  overflow: hidden;          /* Prevents overflow from long text */
-  word-break: break-word;    /* Breaks long words */
-  min-width: 0;              /* Allows flex child to shrink below content size */
+  min-width: 0; /* allows shrinking */
+  word-break: break-word;
 }
 
-/* Author, text, time */
 .comment-author {
   font-weight: 600;
-  color: var(--foreground);
-  text-decoration: none;
   font-size: var(--text-sm);
   margin-right: var(--space-xs);
-  display: inline-block;
 }
-.comment-author:hover {
-  text-decoration: underline;
-}
-
 .comment-text {
-  color: var(--foreground);
   font-size: var(--text-sm);
   line-height: 1.4;
-  word-break: break-word;
-  white-space: normal;
 }
-
 .comment-time {
   font-size: var(--text-xs);
   color: var(--muted-foreground);
   margin-left: var(--space-s);
   white-space: nowrap;
 }
-
-/* Reply button */
 .reply-btn {
   background: none;
   border: none;
   color: var(--muted-foreground);
   font-size: var(--text-xs);
-  font-weight: 500;
   cursor: pointer;
-  padding: 0;
   margin-left: var(--space-s);
-  transition: color 0.2s;
-  display: inline-block;
 }
 .reply-btn:hover {
   color: var(--primary);
-  text-decoration: underline;
 }
 
-/* ---------- Unified Comment Input ---------- */
-.add-comment {
-  margin-top: var(--space-m);
-}
+/* Indentation classes (instead of inline styles) */
+.comment-indent-1 { margin-left: 20px; }
+.comment-indent-2 { margin-left: 40px; }
+.comment-indent-3 { margin-left: 60px; }
+.comment-indent-4 { margin-left: 80px; }
+.comment-indent-5 { margin-left: 100px; }
 
-.reply-context {
-  background: var(--secondary);
-  padding: var(--space-xs) var(--space-s);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-s);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: var(--text-sm);
-  flex-wrap: wrap;
+/* Reply form container (identical to main comment input) */
+.reply-input-container {
+  margin-top: var(--space-s);
+  margin-left: 20px; /* align with comment bubble */
+  max-width: 100%;
 }
-.reply-context span {
-  color: var(--muted-foreground);
-}
-.reply-context strong {
-  color: var(--primary);
-}
-.cancel-reply {
-  background: none;
-  border: none;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  font-size: var(--text-xs);
-}
-.cancel-reply:hover {
-  color: var(--destructive);
-}
-
-.comment-input-wrapper {
+.reply-input-wrapper {
   display: flex;
   gap: var(--space-s);
   background: var(--muted);
   border-radius: 24px;
   padding: var(--space-xs) var(--space-s);
-  width: 100%;
+  align-items: center;
 }
-.comment-input {
+.reply-input {
   flex: 1;
   background: transparent;
   border: none;
@@ -584,88 +538,6 @@
   outline: none;
   min-width: 0;
 }
-.comment-submit {
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 20px;
-  padding: var(--space-xs) var(--space-m);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-  white-space: nowrap;
-}
-.comment-submit:hover {
-  background: var(--primary-light);
-}
-
-/* ---------- Nested Comments ---------- */
-/* The margin-left is applied via inline style (level * 20px) */
-/* We'll keep it but add a max margin to prevent extreme indentation on small screens */
-.comment[style*="margin-left"] {
-  max-width: calc(100% - 20px);
-}
-
-/* ---------- Responsive adjustments ---------- */
-@media (max-width: 640px) {
-  .comment {
-    gap: var(--space-xs);
-  }
-  .comment-avatar-link {
-    width: 32px;
-    height: 32px;
-  }
-  .comment-body {
-    padding: var(--space-xs) var(--space-s);
-  }
-  .comment-author, .comment-text {
-    font-size: 0.875rem;
-  }
-  .comment-time {
-    font-size: 0.7rem;
-  }
-  .reply-context {
-    font-size: 0.8rem;
-  }
-  .comment-input-wrapper {
-    gap: var(--space-xs);
-  }
-  .comment-submit {
-    padding: var(--space-xs) var(--space-s);
-  }
-}
-
-/* Reply form container */
-.reply-input-container {
-  margin-top: var(--space-s);
-  margin-left: 40px;                /* aligns with comment bubble */
-  max-width: 100%;
-  width: auto;
-  clear: both;
-}
-
-.reply-input-wrapper {
-  display: flex;
-  gap: var(--space-s);
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: var(--space-xs) var(--space-s);
-  align-items: center;
-  flex-wrap: wrap;                 /* allows wrap on very small screens */
-}
-
-.reply-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  padding: var(--space-xs) 0;
-  font-size: var(--text-sm);
-  outline: none;
-  min-width: 120px;               /* ensures some width before wrapping */
-}
-
 .reply-submit {
   background: var(--primary);
   color: white;
@@ -677,26 +549,26 @@
   cursor: pointer;
   white-space: nowrap;
 }
+.reply-submit:hover {
+  background: var(--primary-light);
+}
 
-/* Responsive adjustments */
+/* Responsive: reduce indentation on small screens */
 @media (max-width: 640px) {
+  .comment-indent-1 { margin-left: 10px; }
+  .comment-indent-2 { margin-left: 20px; }
+  .comment-indent-3 { margin-left: 30px; }
+  .comment-indent-4 { margin-left: 40px; }
+  .comment-indent-5 { margin-left: 50px; }
+
   .reply-input-container {
-    margin-left: 20px;             /* reduce indent on small screens */
+    margin-left: 10px;
   }
   .reply-input-wrapper {
     flex-wrap: wrap;
     gap: var(--space-xs);
   }
-  .reply-input {
-    min-width: 100px;
-  }
   .reply-submit {
     padding: var(--space-xs) var(--space-s);
   }
-}
-
-/* Ensure comments don't overflow */
-.comment {
-  overflow: hidden;                /* contains any floated or overflowing children */
-  max-width: 100%;
 }
