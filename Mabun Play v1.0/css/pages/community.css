@@ -635,3 +635,68 @@
     padding: var(--space-xs) var(--space-s);
   }
 }
+
+/* Reply form container */
+.reply-input-container {
+  margin-top: var(--space-s);
+  margin-left: 40px;                /* aligns with comment bubble */
+  max-width: 100%;
+  width: auto;
+  clear: both;
+}
+
+.reply-input-wrapper {
+  display: flex;
+  gap: var(--space-s);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: var(--space-xs) var(--space-s);
+  align-items: center;
+  flex-wrap: wrap;                 /* allows wrap on very small screens */
+}
+
+.reply-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: var(--space-xs) 0;
+  font-size: var(--text-sm);
+  outline: none;
+  min-width: 120px;               /* ensures some width before wrapping */
+}
+
+.reply-submit {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: var(--space-xs) var(--space-m);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .reply-input-container {
+    margin-left: 20px;             /* reduce indent on small screens */
+  }
+  .reply-input-wrapper {
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+  .reply-input {
+    min-width: 100px;
+  }
+  .reply-submit {
+    padding: var(--space-xs) var(--space-s);
+  }
+}
+
+/* Ensure comments don't overflow */
+.comment {
+  overflow: hidden;                /* contains any floated or overflowing children */
+  max-width: 100%;
+}
