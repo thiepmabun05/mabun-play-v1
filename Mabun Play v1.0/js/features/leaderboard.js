@@ -1,462 +1,264 @@
-// js/features/dashboard.js
+// js/features/leaderboard.js
 import { showModal } from '../utils/modal.js';
 import { formatCurrency } from '../utils/formatters.js';
 
-// DOM elements
 const elements = {
-  walletAmount: document.getElementById('wallet-amount'),
-  coinBalance: document.getElementById('coin-balance'),          // coin badge
-  statCoins: document.getElementById('stat-coins-value'),       // coins in stats
-  userName: document.getElementById('user-name'),
-  liveTimer: document.getElementById('live-timer'),
-  nextQuizTimer: document.getElementById('next-quiz-timer'),
-  liveQuizTitle: document.getElementById('live-quiz-title'),
-  hourlyPrize: document.getElementById('hourly-prize'),
-  dailyPrize: document.getElementById('daily-prize'),
-  weeklyPrize: document.getElementById('weekly-prize'),
-  todayDate: document.getElementById('today-date'),
-  weeklyCountdown: document.getElementById('weekly-countdown'),
-  weeklyPayoutCountdown: document.getElementById('weekly-payout-countdown'),
-  dailyPayoutCountdown: document.getElementById('daily-payout-countdown'),
-  statPlayed: document.getElementById('stat-played-value'),
-  statWinnings: document.getElementById('stat-winnings-value'),
-  statRank: document.getElementById('stat-rank-value'),
-  payBtn: document.getElementById('pay-entry-fee'),
-  joinBtn: document.getElementById('join-hourly-quiz'),
-  dailyChallengeBtn: document.querySelector('.js-challenge-entry[data-challenge="daily"]'),
-  weeklyChallengeBtn: document.querySelector('.js-challenge-entry[data-challenge="weekly"]'),
-  subscribeBtn: document.getElementById('subscribe-btn'),
+  typeBtns: document.querySelectorAll('.type-btn'),
+  quizName: document.getElementById('quizName'),
+  qualifierText: document.getElementById('qualifierText'),
+  timeLeft: document.getElementById('timeLeft'),
+  prizePool: document.getElementById('prizePool'),
+  leaderboardList: document.getElementById('leaderboardList'),
 };
 
-let state = {
-  user: { name: 'User', wallet: 0, coins: 0, played: 0, winnings: 0, rank: 0 },
-  liveQuiz: { id: null, title: 'General Knowledge', prizePool: 0, currentQuizEndsAt: null, nextQuizStartsAt: null, hasPaid: false, canJoin: false, canPay: false },
-  dailyChallenge: { prizePool: 0, payoutTime: null, hasEntered: false },
-  weeklyChallenge: { prizePool: 0, endsAt: null, payoutTime: null, hasEntered: false },
-  autoSubscribe: false,
+let currentType = 'hourly';
+let currentData = {
+  id: null,               // for hourly: current quiz ID
+  prizePool: 0,
+  endTime: null,
+  leaderboardTable: null, // 'quiz_leaderboard' or 'challenge_leaderboard'
+  filterField: null,     // 'quiz_id' or 'challenge_type'
 };
+let subscriptions = [];
+let timerInterval = null;
 
-let quizSubscription = null;
+// Prize distribution percentages (top 10)
+const PRIZE_DISTRIBUTION = [
+  { rank: 1, percent: 0.30 },
+  { rank: 2, percent: 0.20 },
+  { rank: 3, percent: 0.15 },
+  { rank: 4, percent: 0.05 },
+  { rank: 5, percent: 0.05 },
+  { rank: 6, percent: 0.05 },
+  { rank: 7, percent: 0.05 },
+  { rank: 8, percent: 0.05 },
+  { rank: 9, percent: 0.05 },
+  { rank: 10, percent: 0.05 },
+];
 
-function showToast(title, message, icon = 'success') {
-  Swal.fire({
-    toast: true,
-    position: 'top-end',
-    icon,
-    title: message,
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true,
-  });
+function unsubscribeAll() {
+  subscriptions.forEach(sub => sub.unsubscribe());
+  subscriptions = [];
+  if (timerInterval) clearInterval(timerInterval);
 }
 
-async function fetchDashboard() {
+async function fetchCurrent() {
   const supabase = window.supabaseClient;
-  if (!supabase) {
-    console.error('Supabase client not available');
-    showModal({ title: 'Error', message: 'Supabase client not loaded. Please refresh.', confirmText: 'OK' });
-    return;
-  }
+  if (!supabase) return;
 
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
-    if (!user) throw new Error('Not authenticated');
-
-    // Fetch profile (includes coins)
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('username, winnings, played, rank, wallet_balance, coins_balance')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError) {
-      if (profileError.code === 'PGRST116') {
-        console.log('Profile missing, redirecting to complete-profile');
-        window.location.href = 'complete-profile.html';
-        return;
-      }
-      throw profileError;
-    }
-
-    state.user.name = profile.username;
-    state.user.winnings = profile.winnings || 0;
-    state.user.played = profile.played || 0;
-    state.user.rank = profile.rank || 0;
-    state.user.wallet = profile.wallet_balance || 0;
-    state.user.coins = profile.coins_balance || 15000;   // default 15000
-
-    // 1. Try to fetch active hourly quiz from database
-    const { data: liveQuiz, error: liveError } = await supabase
-      .from('quizzes')
-      .select('id, title, prize_pool, current_quiz_ends_at, next_quiz_starts_at, status, participant_count')
-      .eq('type', 'hourly')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!liveError && liveQuiz) {
-      // Use the real quiz from database
-      state.liveQuiz = {
-        id: liveQuiz.id,
-        title: liveQuiz.title,
-        prizePool: liveQuiz.prize_pool,
-        currentQuizEndsAt: liveQuiz.current_quiz_ends_at,
-        nextQuizStartsAt: liveQuiz.next_quiz_starts_at,
-        canPay: true,
-        canJoin: true,
-        hasPaid: false,
-        participantCount: liveQuiz.participant_count,
-      };
-      console.log('✅ Using real quiz from DB:', state.liveQuiz.id);
-    } else {
-      // Fallback to the hardcoded 9:40 PM quiz (ID: a1b2c3d4-e5f6-7890-1234-567890abcdef)
-      // Set timers relative to current time for realistic display.
-      const now = new Date();
-      const startTime = new Date('2026-03-21T21:40:00+00:00');
-      const endTime = new Date('2026-03-21T21:56:40+00:00');
-      // If the start time is already in the past, use now as start for demo.
-      if (now > startTime) {
-        // Quiz already started – use the actual remaining time based on end time
-        const remainingMs = endTime - now;
-        if (remainingMs > 0) {
-          state.liveQuiz.currentQuizEndsAt = endTime.toISOString();
-          state.liveQuiz.nextQuizStartsAt = startTime.toISOString();
-        } else {
-          // Quiz already ended – fallback to a dummy future quiz
-          state.liveQuiz.currentQuizEndsAt = new Date(now.getTime() + 40 * 60 * 1000).toISOString();
-          state.liveQuiz.nextQuizStartsAt = new Date(now.getTime() + 40 * 60 * 1000).toISOString();
-        }
+    if (currentType === 'hourly') {
+      // Get the most recent active hourly quiz
+      const { data, error } = await supabase
+        .from('quizzes')
+        .select('id, title, prize_pool, next_question_at')
+        .eq('type', 'hourly')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        currentData.id = data.id;
+        currentData.prizePool = data.prize_pool;
+        currentData.endTime = data.next_question_at;
+        currentData.leaderboardTable = 'quiz_leaderboard';
+        currentData.filterField = 'quiz_id';
+        elements.quizName.textContent = data.title;
+        elements.qualifierText.textContent = 'Live updates – scores refresh after each answer';
       } else {
-        // Not started yet – use original times
-        state.liveQuiz.currentQuizEndsAt = endTime.toISOString();
-        state.liveQuiz.nextQuizStartsAt = startTime.toISOString();
-      }
-      state.liveQuiz = {
-        id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
-        title: 'General Knowledge Hourly',
-        prizePool: 10000,
-        currentQuizEndsAt: state.liveQuiz.currentQuizEndsAt,
-        nextQuizStartsAt: state.liveQuiz.nextQuizStartsAt,
-        canPay: true,
-        canJoin: true,
-        hasPaid: false,
-        participantCount: 0,
-      };
-      console.warn('⚠️ No active hourly quiz found, using fallback (9:40 PM)');
-    }
-
-    // Daily challenge
-    const { data: daily, error: dailyError } = await supabase
-      .from('challenges')
-      .select('prize_pool, payout_time')
-      .eq('type', 'daily')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!dailyError && daily) {
-      state.dailyChallenge.prizePool = daily.prize_pool;
-      state.dailyChallenge.payoutTime = daily.payout_time;
-      const { data: entry } = await supabase
-        .from('challenge_entries')
-        .select('id')
-        .eq('challenge_type', 'daily')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (entry) state.dailyChallenge.hasEntered = true;
-    }
-
-    // Weekly challenge
-    const { data: weekly, error: weeklyError } = await supabase
-      .from('challenges')
-      .select('prize_pool, ends_at, payout_time')
-      .eq('type', 'weekly')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!weeklyError && weekly) {
-      state.weeklyChallenge.prizePool = weekly.prize_pool;
-      state.weeklyChallenge.endsAt = weekly.ends_at;
-      state.weeklyChallenge.payoutTime = weekly.payout_time;
-      const { data: entry } = await supabase
-        .from('challenge_entries')
-        .select('id')
-        .eq('challenge_type', 'weekly')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (entry) state.weeklyChallenge.hasEntered = true;
-    }
-
-    // Auto-subscribe
-    const { data: sub } = await supabase
-      .from('subscriptions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('type', 'daily')
-      .maybeSingle();
-    if (sub) state.autoSubscribe = true;
-
-    renderAll();
-    updateTimers();
-
-    // Subscribe to live quiz updates
-    if (state.liveQuiz.id) {
-      if (quizSubscription) quizSubscription.unsubscribe();
-      quizSubscription = supabase
-        .channel(`quiz-${state.liveQuiz.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'quizzes',
-            filter: `id=eq.${state.liveQuiz.id}`,
-          },
-          (payload) => {
-            if (payload.new.prize_pool !== undefined) state.liveQuiz.prizePool = payload.new.prize_pool;
-            if (payload.new.current_quiz_ends_at !== undefined) state.liveQuiz.currentQuizEndsAt = payload.new.current_quiz_ends_at;
-            if (payload.new.next_quiz_starts_at !== undefined) state.liveQuiz.nextQuizStartsAt = payload.new.next_quiz_starts_at;
-            if (payload.new.participant_count !== undefined) state.liveQuiz.participantCount = payload.new.participant_count;
-            renderLiveQuiz();
-            updateTimers();
-          }
-        )
-        .subscribe();
-    }
-  } catch (err) {
-    console.error('Dashboard error:', err);
-    showModal({ title: 'Error', message: err.message || 'Could not load dashboard.', confirmText: 'OK' });
-  }
-}
-
-function renderAll() {
-  renderUser();
-  renderLiveQuiz();
-  renderDaily();
-  renderWeekly();
-  renderSubscribeButton();
-  updateButtonStates();
-}
-
-function renderUser() {
-  if (elements.walletAmount) elements.walletAmount.textContent = state.user.wallet.toFixed(2);
-  if (elements.coinBalance) elements.coinBalance.textContent = state.user.coins;
-  if (elements.statCoins) elements.statCoins.textContent = state.user.coins;
-  if (elements.userName) elements.userName.textContent = state.user.name;
-  if (elements.statPlayed) elements.statPlayed.textContent = state.user.played;
-  if (elements.statWinnings) elements.statWinnings.textContent = formatCurrency(state.user.winnings, true);
-  if (elements.statRank) elements.statRank.textContent = '#' + state.user.rank;
-}
-
-function renderLiveQuiz() {
-  if (elements.liveQuizTitle) elements.liveQuizTitle.textContent = state.liveQuiz.title;
-  if (elements.hourlyPrize) elements.hourlyPrize.textContent = `${state.liveQuiz.prizePool.toLocaleString()} Coins`;
-  if (elements.payBtn) {
-    if (state.liveQuiz.hasPaid) {
-      elements.payBtn.textContent = 'Paid';
-      elements.payBtn.disabled = true;
-    } else {
-      elements.payBtn.textContent = 'Use 100 Coins';
-      elements.payBtn.disabled = false;
-    }
-  }
-}
-
-function renderDaily() {
-  if (elements.dailyPrize) elements.dailyPrize.textContent = `${state.dailyChallenge.prizePool.toLocaleString()} Coins`;
-  if (elements.todayDate) elements.todayDate.textContent = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  if (elements.dailyChallengeBtn) elements.dailyChallengeBtn.textContent = state.dailyChallenge.hasEntered ? 'Entered' : 'Enter Challenge';
-}
-
-function renderWeekly() {
-  if (elements.weeklyPrize) elements.weeklyPrize.textContent = `${state.weeklyChallenge.prizePool.toLocaleString()} Coins`;
-  if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.textContent = state.weeklyChallenge.hasEntered ? 'Entered' : 'Enter Challenge';
-}
-
-function renderSubscribeButton() {
-  if (!elements.subscribeBtn) return;
-  elements.subscribeBtn.textContent = state.autoSubscribe ? 'Subscribed (Daily)' : 'Subscribe Now';
-  elements.subscribeBtn.disabled = state.autoSubscribe;
-}
-
-function updateTimers() {
-  const now = Date.now();
-  if (elements.liveTimer && state.liveQuiz.currentQuizEndsAt) {
-    const endTime = new Date(state.liveQuiz.currentQuizEndsAt).getTime();
-    const diff = Math.max(0, endTime - now);
-    const mins = Math.floor(diff / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    elements.liveTimer.textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-  } else if (elements.liveTimer) elements.liveTimer.textContent = '00:00';
-
-  if (elements.nextQuizTimer && state.liveQuiz.nextQuizStartsAt) {
-    const startTime = new Date(state.liveQuiz.nextQuizStartsAt).getTime();
-    const diff = Math.max(0, startTime - now);
-    const mins = Math.floor(diff / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    elements.nextQuizTimer.textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-  }
-
-  if (elements.dailyPayoutCountdown && state.dailyChallenge.payoutTime) {
-    const payoutTime = new Date(state.dailyChallenge.payoutTime).getTime();
-    const diff = Math.max(0, payoutTime - now);
-    const hours = Math.floor(diff / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    elements.dailyPayoutCountdown.textContent = `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-  }
-
-  if (elements.weeklyCountdown && state.weeklyChallenge.endsAt) {
-    const endsAt = new Date(state.weeklyChallenge.endsAt).getTime();
-    const diff = Math.max(0, endsAt - now);
-    const days = Math.floor(diff / 86400000);
-    const hours = Math.floor((diff % 86400000) / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    elements.weeklyCountdown.textContent = `${days}d ${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-  }
-
-  if (elements.weeklyPayoutCountdown && state.weeklyChallenge.payoutTime) {
-    const payoutTime = new Date(state.weeklyChallenge.payoutTime).getTime();
-    const diff = Math.max(0, payoutTime - now);
-    const hours = Math.floor(diff / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    elements.weeklyPayoutCountdown.textContent = `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-  }
-}
-
-function updateButtonStates() {
-  if (elements.payBtn) elements.payBtn.disabled = state.liveQuiz.hasPaid;
-  if (elements.joinBtn) elements.joinBtn.disabled = !state.liveQuiz.canJoin;
-  if (elements.dailyChallengeBtn) elements.dailyChallengeBtn.disabled = state.dailyChallenge.hasEntered;
-  if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.disabled = state.weeklyChallenge.hasEntered;
-}
-
-async function handlePayEntry() {
-  state.liveQuiz.hasPaid = true;
-  state.liveQuiz.canJoin = true;
-  renderLiveQuiz();
-  updateButtonStates();
-  showToast('Entry Fee Waived', 'You have used 100 coins to unlock this quiz.', 'success');
-}
-
-async function handleJoinQuiz() {
-  if (!state.liveQuiz.canJoin) {
-    await showModal({ title: 'Cannot Join', message: 'Joining is not available at this time.', confirmText: 'OK' });
-    return;
-  }
-
-  try {
-    const supabase = window.supabaseClient;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase.rpc('join_quiz', {
-      p_quiz_id: state.liveQuiz.id,
-      p_user_id: user.id
-    });
-    if (error) throw error;
-    if (data.error) {
-      if (data.error === 'Already joined') {
-        // Resume existing session
-        window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${data.session_id}`;
+        elements.quizName.textContent = 'No active quiz';
+        elements.prizePool.textContent = formatCurrency(0);
+        elements.timeLeft.textContent = '--:--';
+        elements.leaderboardList.innerHTML = '<div class="empty-state">No active hourly quiz</div>';
         return;
       }
-      throw new Error(data.error);
-    }
-
-    // Update local coin balance
-    state.user.coins = data.new_balance;
-    renderUser();
-
-    const session = data.session;
-    window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${session.id}`;
-  } catch (err) {
-    console.error(err);
-    if (err.message === 'Insufficient coins') {
-      await showModal({
-        title: 'Insufficient Coins',
-        message: 'You need more Mabun coins to join this quiz. Complete more quizzes to earn coins.',
-        confirmText: 'OK'
-      });
     } else {
-      await showModal({ title: 'Join Failed', message: err.message || 'Could not join quiz.', confirmText: 'OK' });
+      // Daily or weekly challenge – get the most recent challenge of that type
+      const { data, error } = await supabase
+        .from('challenges')
+        .select('prize_pool, ends_at')
+        .eq('type', currentType)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        currentData.id = null;
+        currentData.prizePool = data.prize_pool;
+        currentData.endTime = data.ends_at;
+        currentData.leaderboardTable = 'challenge_leaderboard';
+        currentData.filterField = 'challenge_type';
+        elements.quizName.textContent = `${currentType.charAt(0).toUpperCase() + currentType.slice(1)} Challenge`;
+        elements.qualifierText.textContent = 'Cumulative scores over the period';
+      } else {
+        elements.quizName.textContent = 'No active challenge';
+        elements.prizePool.textContent = formatCurrency(0);
+        elements.timeLeft.textContent = '--:--';
+        elements.leaderboardList.innerHTML = '<div class="empty-state">No active challenge</div>';
+        return;
+      }
     }
+
+    elements.prizePool.textContent = `${currentData.prizePool.toLocaleString()} Coins`;
+    startTimer(currentData.endTime);
+    await fetchLeaderboard();
+    subscribeToLeaderboard();
+  } catch (err) {
+    console.error('Error fetching current:', err);
+    showModal({ title: 'Error', message: err.message, confirmText: 'OK' });
   }
 }
 
-async function handleChallengeEntry(e) {
-  e.preventDefault();
-  const btn = e.currentTarget;
-  const challenge = btn.dataset.challenge;
+function startTimer(endTimeISO) {
+  if (timerInterval) clearInterval(timerInterval);
+  const endTime = new Date(endTimeISO).getTime();
+  timerInterval = setInterval(() => {
+    const now = Date.now();
+    const diff = endTime - now;
+    if (diff <= 0) {
+      elements.timeLeft.textContent = '00:00';
+      clearInterval(timerInterval);
+      return;
+    }
+    const mins = Math.floor(diff / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    elements.timeLeft.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }, 1000);
+}
 
-  if ((challenge === 'daily' && state.dailyChallenge.hasEntered) ||
-      (challenge === 'weekly' && state.weeklyChallenge.hasEntered)) {
+async function fetchLeaderboard() {
+  const supabase = window.supabaseClient;
+  if (!supabase || !currentData.leaderboardTable) return;
+
+  try {
+    const orderColumn = currentData.leaderboardTable === 'quiz_leaderboard' ? 'score' : 'total_score';
+    let query = supabase
+      .from(currentData.leaderboardTable)
+      .select('*')
+      .order(orderColumn, { ascending: false })
+      .limit(100);
+
+    if (currentData.filterField === 'quiz_id') {
+      query = query.eq('quiz_id', currentData.id);
+    } else {
+      query = query.eq('challenge_type', currentType);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    renderLeaderboard(data || []);
+  } catch (err) {
+    console.error('Error fetching leaderboard:', err);
+    elements.leaderboardList.innerHTML = '<div class="empty-state">Error loading leaderboard</div>';
+  }
+}
+
+function renderLeaderboard(players) {
+  const listEl = elements.leaderboardList;
+  if (!listEl) return;
+
+  if (!players.length) {
+    listEl.innerHTML = '<div class="empty-state">No participants yet. Be the first!</div>';
     return;
   }
 
-  try {
-    btn.disabled = true;
-    const supabase = window.supabaseClient;
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data, error } = await supabase.rpc('enter_challenge', {
-      p_challenge_type: challenge,
-      p_user_id: user.id
-    });
-    if (error) throw error;
-    if (data.error) throw new Error(data.error);
+  // Determine the score field name based on table
+  const scoreKey = currentData.leaderboardTable === 'quiz_leaderboard' ? 'score' : 'total_score';
 
-    state.user.coins = data.new_balance;
-    renderUser();
+  // Compute ranks and prize amounts
+  const ranked = players.map((player, idx) => {
+    const rank = idx + 1;
+    let prize = 0;
+    const dist = PRIZE_DISTRIBUTION.find(d => d.rank === rank);
+    if (dist) prize = Math.floor(currentData.prizePool * dist.percent);
+    const score = player[scoreKey];
+    return { ...player, rank, prize, score };
+  });
 
-    if (challenge === 'daily') state.dailyChallenge.hasEntered = true;
-    else state.weeklyChallenge.hasEntered = true;
-    renderAll();
-    showToast('Success', `You have entered the ${challenge} challenge!`, 'success');
-  } catch (err) {
-    console.error(err);
-    if (err.message === 'Insufficient coins') {
-      await showModal({
-        title: 'Insufficient Coins',
-        message: 'You need more Mabun coins to enter this challenge.',
-        confirmText: 'OK'
-      });
-    } else if (err.message === 'Already entered for this period') {
-      await showModal({
-        title: 'Already Entered',
-        message: `You have already entered the ${challenge} challenge for this period.`,
-        confirmText: 'OK'
-      });
-    } else {
-      await showModal({
-        title: 'Entry Failed',
-        message: err?.message || 'Could not enter challenge.',
-        confirmText: 'OK'
-      });
-    }
-  } finally {
-    btn.disabled = false;
+  listEl.innerHTML = ranked.map(player => `
+    <div class="leaderboard-item">
+      <div class="rank rank-${player.rank}">
+        ${player.rank === 1 ? '<iconify-icon icon="solar:medal-star-bold"></iconify-icon>' : 
+          player.rank === 2 ? '<iconify-icon icon="solar:medal-ribbon-bold"></iconify-icon>' :
+          player.rank === 3 ? '<iconify-icon icon="solar:medal-ribbon-bold"></iconify-icon>' : player.rank}
+      </div>
+      <div class="avatar">
+        <img src="${player.avatar_url || '/assets/images/default-avatar.png'}" alt="${escapeHtml(player.username)}">
+      </div>
+      <div class="player-info">
+        <div class="player-name">${escapeHtml(player.username)}</div>
+      </div>
+      <div class="score-prize">
+        <span class="score">${player.score} pts</span>
+        ${player.prize > 0 ? `<span class="prize">${player.prize.toLocaleString()} Coins</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function subscribeToLeaderboard() {
+  unsubscribeAll();
+  if (!currentData.leaderboardTable) return;
+
+  const supabase = window.supabaseClient;
+  let channelName = `leaderboard-${currentType}`;
+  let filter = currentData.filterField === 'quiz_id' ? `quiz_id=eq.${currentData.id}` : `challenge_type=eq.${currentType}`;
+
+  const subscription = supabase
+    .channel(channelName)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: currentData.leaderboardTable,
+        filter: filter,
+      },
+      () => {
+        fetchLeaderboard();  // re-fetch on any change
+      }
+    )
+    .subscribe();
+
+  subscriptions.push(subscription);
+}
+
+async function switchType(type) {
+  currentType = type;
+  elements.typeBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+  await fetchCurrent();
+}
+
+// Helper to escape HTML
+function escapeHtml(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Initialization
+(async function init() {
+  // Wait for Supabase client
+  let retries = 0;
+  while (!window.supabaseClient && retries < 20) {
+    await new Promise(r => setTimeout(r, 50));
+    retries++;
   }
-}
+  if (!window.supabaseClient) {
+    console.error('Supabase client not available');
+    return;
+  }
 
-async function handleSubscribe() {
-  await showModal({ title: 'Coming Soon', message: 'Subscription feature is not yet available.', confirmText: 'OK' });
-}
+  elements.typeBtns.forEach(btn => {
+    btn.addEventListener('click', () => switchType(btn.dataset.type));
+  });
 
-function init() {
-  fetchDashboard();
-  setInterval(updateTimers, 1000);
-  if (elements.payBtn) elements.payBtn.addEventListener('click', handlePayEntry);
-  if (elements.joinBtn) elements.joinBtn.addEventListener('click', handleJoinQuiz);
-  if (elements.dailyChallengeBtn) elements.dailyChallengeBtn.addEventListener('click', handleChallengeEntry);
-  if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.addEventListener('click', handleChallengeEntry);
-  if (elements.subscribeBtn) elements.subscribeBtn.addEventListener('click', handleSubscribe);
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
+  await switchType('hourly');
+})();
