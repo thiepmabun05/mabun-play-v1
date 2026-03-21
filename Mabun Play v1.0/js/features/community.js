@@ -2,7 +2,7 @@
 import { showModal } from '../utils/modal.js';
 import { throttle } from '../utils/helpers.js';
 
-// Time formatter
+// ---------- Helper: format time ----------
 function formatTime(dateString) {
   if (!dateString) return 'Just now';
   const date = new Date(dateString);
@@ -23,6 +23,17 @@ function formatTime(dateString) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// ---------- Helper: escape HTML ----------
+function escapeHtml(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const elements = {
     postInput: document.getElementById('postInput'),
@@ -35,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     backToTopBtn: document.getElementById('backToTopBtn'),
     postImageUpload: document.getElementById('postImageUpload'),
     imagePreview: document.getElementById('imagePreview'),
-    postAvatar: document.querySelector('.create-post-card .post-avatar'), // avatar in create post area
+    postAvatar: document.querySelector('.create-post-card .post-avatar'),
   };
 
   let currentFeed = 'latest';
@@ -53,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // ==================== Authentication & User Data ====================
+  // ---------- Authentication & User Data ----------
   async function getCurrentUser() {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return null;
@@ -74,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return null;
     }
     currentUserProfile = data;
-    // Update the avatar in the create‑post card
+    // Update avatar in create‑post card
     if (elements.postAvatar) {
       elements.postAvatar.src = currentUserProfile.avatar_url || '/assets/images/default-avatar.png';
     }
@@ -91,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return data.map(f => f.following_id);
   }
 
-  // ==================== Load Posts ====================
+  // ---------- Load Posts ----------
   async function loadPosts(feed, pageNum) {
     if (loading || !hasMore) return;
     loading = true;
@@ -113,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
         .order('created_at', { ascending: false });
 
       if (feed === 'trending') {
-        // Trending: posts with highest likes_count + comments_count
         query = supabase
           .from('posts')
           .select(`
@@ -158,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (posts.length === 0 && pageNum === 1) {
         elements.postsFeed.innerHTML = '<div class="empty-state">No posts yet. Be the first!</div>';
       } else {
-        // For each post, check if the current user liked it
+        // Check which posts the current user has liked
         const likedMap = {};
         if (currentUserId) {
           const { data: likes } = await supabase
@@ -172,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         for (const post of posts) {
-          // Extract profile from the nested object
           const profile = post.profiles && post.profiles[0] ? post.profiles[0] : { username: 'Unknown', avatar_url: null };
           const postWithProfile = {
             ...post,
@@ -194,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ==================== Create Post Element ====================
+  // ---------- Create a Post Element ----------
   function createPostElement(post) {
     const authorName = post.profiles?.username || 'Unknown';
     const authorAvatar = post.profiles?.avatar_url || '/assets/images/default-avatar.png';
@@ -212,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <img src="${authorAvatar}" alt="" class="post-avatar">
         </a>
         <div class="post-meta">
-          <a href="profile.html?userId=${post.user_id}" class="post-author">${authorName}</a>
+          <a href="profile.html?userId=${post.user_id}" class="post-author">${escapeHtml(authorName)}</a>
           <span class="post-time">${formatTime(createdAt)}</span>
         </div>
       </div>
@@ -258,8 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
           likeBtn.querySelector('span').textContent = likeCount + 1;
           likeBtn.querySelector('iconify-icon').setAttribute('icon', 'solar:heart-bold');
         }
-        // We could also update the count in memory, but the trigger will update the posts table.
-        // For UI consistency, we simply change the count locally.
+        // Update count in post object (optional)
       } catch (error) {
         console.error('Like failed:', error);
       }
@@ -317,46 +325,126 @@ document.addEventListener('DOMContentLoaded', () => {
     return div;
   }
 
-  // ==================== Load Comments ====================
+  // ---------- Load Comments (with nested replies) ----------
   async function loadComments(postId) {
     try {
       const { data: comments, error } = await supabase
         .from('comments')
         .select(`
           *,
-          profiles (username, avatar_url)
+          profiles:user_id (username, avatar_url)
         `)
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
+
       if (error) throw error;
 
       const commentsList = document.getElementById(`comments-${postId}`);
       if (!commentsList) return;
+
       if (!comments || comments.length === 0) {
         commentsList.innerHTML = '<p class="no-comments">No comments yet.</p>';
-      } else {
-        commentsList.innerHTML = comments.map(c => {
-          const profile = c.profiles && c.profiles[0] ? c.profiles[0] : { username: 'Unknown', avatar_url: null };
-          return `
-            <div class="comment">
-              <a href="profile.html?userId=${c.user_id}" class="comment-avatar-link">
-                <img src="${profile.avatar_url || '/assets/images/default-avatar.png'}" alt="" class="comment-avatar">
-              </a>
-              <div class="comment-body">
-                <a href="profile.html?userId=${c.user_id}" class="comment-author">${profile.username}</a>
-                <span class="comment-text">${escapeHtml(c.text)}</span>
-                <span class="comment-time">${formatTime(c.created_at)}</span>
-              </div>
-            </div>
-          `;
-        }).join('');
+        return;
       }
+
+      // Build a map of comments by id
+      const commentMap = {};
+      comments.forEach(comment => {
+        const profile = comment.profiles && comment.profiles[0] ? comment.profiles[0] : { username: 'Unknown', avatar_url: null };
+        commentMap[comment.id] = {
+          ...comment,
+          profile,
+          replies: [],
+        };
+      });
+
+      // Organize into tree
+      const topLevelComments = [];
+      for (const id in commentMap) {
+        const comment = commentMap[id];
+        if (comment.parent_id) {
+          const parent = commentMap[comment.parent_id];
+          if (parent) {
+            parent.replies.push(comment);
+          } else {
+            // parent not found, treat as top-level
+            topLevelComments.push(comment);
+          }
+        } else {
+          topLevelComments.push(comment);
+        }
+      }
+
+      // Render recursively
+      function renderComment(comment, level = 0) {
+        const marginLeft = level * 20;
+        return `
+          <div class="comment" style="margin-left: ${marginLeft}px">
+            <a href="profile.html?userId=${comment.user_id}" class="comment-avatar-link">
+              <img src="${comment.profile.avatar_url || '/assets/images/default-avatar.png'}" alt="" class="comment-avatar">
+            </a>
+            <div class="comment-body">
+              <a href="profile.html?userId=${comment.user_id}" class="comment-author">${escapeHtml(comment.profile.username)}</a>
+              <span class="comment-text">${escapeHtml(comment.text)}</span>
+              <span class="comment-time">${formatTime(comment.created_at)}</span>
+              <button class="reply-btn" data-comment-id="${comment.id}" data-post-id="${postId}">Reply</button>
+            </div>
+            <div class="reply-input-container" style="display: none; margin-left: 40px;">
+              <input type="text" class="reply-input" placeholder="Write a reply...">
+              <button class="reply-submit">Post Reply</button>
+            </div>
+          </div>
+          ${comment.replies.map(reply => renderComment(reply, level + 1)).join('')}
+        `;
+      }
+
+      commentsList.innerHTML = topLevelComments.map(comment => renderComment(comment, 0)).join('');
+
+      // Attach reply handlers
+      document.querySelectorAll(`.reply-btn[data-post-id="${postId}"]`).forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const container = btn.closest('.comment-body').nextElementSibling;
+          if (container) {
+            container.style.display = container.style.display === 'none' ? 'block' : 'none';
+          }
+        });
+      });
+
+      document.querySelectorAll(`.reply-submit`).forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const container = btn.closest('.reply-input-container');
+          const input = container.querySelector('.reply-input');
+          const text = input.value.trim();
+          if (!text) return;
+          const parentCommentId = container.closest('.comment').querySelector('.reply-btn')?.dataset.commentId;
+          if (!parentCommentId) return;
+          try {
+            await supabase.from('comments').insert({
+              post_id: postId,
+              user_id: currentUserId,
+              text,
+              parent_id: parentCommentId,
+            });
+            input.value = '';
+            container.style.display = 'none';
+            // Reload comments to show the new reply
+            await loadComments(postId);
+            // Update comment count on the post
+            const commentToggle = document.querySelector(`.post-card[data-post-id="${postId}"] .comment-toggle span`);
+            if (commentToggle) {
+              commentToggle.textContent = parseInt(commentToggle.textContent) + 1;
+            }
+          } catch (error) {
+            showModal({ title: 'Error', message: error.message, confirmText: 'OK' });
+          }
+        });
+      });
     } catch (error) {
       console.error('Failed to load comments:', error);
     }
   }
 
-  // ==================== Create New Post ====================
+  // ---------- Create a New Post ----------
   async function createPost(content, imageFile) {
     let imageUrl = null;
     if (imageFile) {
@@ -383,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return data;
   }
 
-  // ==================== Event Listeners ====================
+  // ---------- Event Listeners ----------
   elements.feedTabs.forEach(tab => {
     tab.addEventListener('click', () => {
       elements.feedTabs.forEach(t => t.classList.remove('active'));
@@ -405,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 200));
 
-  // Image upload
+  // Image upload handling
   const fileInput = elements.postImageUpload;
   if (elements.uploadImageLabel && fileInput) {
     elements.uploadImageLabel.addEventListener('click', (e) => {
@@ -462,7 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       elements.createPostBtn.disabled = true;
       const newPost = await createPost(content, selectedImageFile);
-      // Fetch the current user's profile to build the post element
       const profile = await getCurrentUserProfile();
       if (!profile) throw new Error('Could not fetch profile');
       const postWithProfile = {
@@ -493,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // ==================== Initialization ====================
+  // ---------- Initialization ----------
   (async function init() {
     const user = await getCurrentUser();
     if (user) {
@@ -502,14 +589,3 @@ document.addEventListener('DOMContentLoaded', () => {
     await loadPosts(currentFeed, 1);
   })();
 });
-
-// Helper to escape HTML
-function escapeHtml(str) {
-  if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
