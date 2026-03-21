@@ -102,6 +102,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return data.map(f => f.following_id);
   }
 
+  async function checkIfUserLiked(postId) {
+    if (!currentUserId) return false;
+    const { data, error } = await supabase
+      .from('likes')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', currentUserId)
+      .maybeSingle();
+    return !!data;
+  }
+
   // ---------- Load Posts ----------
   async function loadPosts(feed, pageNum) {
     if (loading || !hasMore) return;
@@ -111,31 +122,13 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       let query = supabase
         .from('posts')
-        .select(`
-          id,
-          content,
-          image_url,
-          user_id,
-          created_at,
-          likes_count,
-          comments_count,
-          profiles (username, avatar_url)
-        `)
+        .select('id, content, image_url, user_id, created_at, likes_count, comments_count')
         .order('created_at', { ascending: false });
 
       if (feed === 'trending') {
         query = supabase
           .from('posts')
-          .select(`
-            id,
-            content,
-            image_url,
-            user_id,
-            created_at,
-            likes_count,
-            comments_count,
-            profiles (username, avatar_url)
-          `)
+          .select('id, content, image_url, user_id, created_at, likes_count, comments_count')
           .order('likes_count', { ascending: false })
           .order('comments_count', { ascending: false });
       } else if (feed === 'following') {
@@ -148,16 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         query = supabase
           .from('posts')
-          .select(`
-            id,
-            content,
-            image_url,
-            user_id,
-            created_at,
-            likes_count,
-            comments_count,
-            profiles (username, avatar_url)
-          `)
+          .select('id, content, image_url, user_id, created_at, likes_count, comments_count')
           .in('user_id', following)
           .order('created_at', { ascending: false });
       }
@@ -168,7 +152,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (posts.length === 0 && pageNum === 1) {
         elements.postsFeed.innerHTML = '<div class="empty-state">No posts yet. Be the first!</div>';
       } else {
-        // Check which posts the current user has liked
+        // Fetch profiles for all users in one go
+        const userIds = [...new Set(posts.map(p => p.user_id))];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .in('id', userIds);
+        const profileMap = {};
+        profiles.forEach(p => { profileMap[p.id] = p; });
+
+        // Check likes for current user
         const likedMap = {};
         if (currentUserId) {
           const { data: likes } = await supabase
@@ -182,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         for (const post of posts) {
-          const profile = post.profiles && post.profiles[0] ? post.profiles[0] : { username: 'Unknown', avatar_url: null };
+          const profile = profileMap[post.user_id] || { username: 'Unknown', avatar_url: null };
           const postWithProfile = {
             ...post,
             profiles: profile,
@@ -330,10 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const { data: comments, error } = await supabase
         .from('comments')
-        .select(`
-          *,
-          profiles:user_id (username, avatar_url)
-        `)
+        .select('id, text, user_id, created_at, parent_id')
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
@@ -347,31 +337,32 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Build a map of comments by id
+      // Fetch profiles for all comment authors
+      const userIds = [...new Set(comments.map(c => c.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .in('id', userIds);
+      const profileMap = {};
+      profiles.forEach(p => { profileMap[p.id] = p; });
+
+      // Build comment tree
       const commentMap = {};
       comments.forEach(comment => {
-        const profile = comment.profiles && comment.profiles[0] ? comment.profiles[0] : { username: 'Unknown', avatar_url: null };
         commentMap[comment.id] = {
           ...comment,
-          profile,
+          profile: profileMap[comment.user_id] || { username: 'Unknown', avatar_url: null },
           replies: [],
         };
       });
 
-      // Organize into tree
       const topLevelComments = [];
       for (const id in commentMap) {
-        const comment = commentMap[id];
-        if (comment.parent_id) {
-          const parent = commentMap[comment.parent_id];
-          if (parent) {
-            parent.replies.push(comment);
-          } else {
-            // parent not found, treat as top-level
-            topLevelComments.push(comment);
-          }
+        const c = commentMap[id];
+        if (c.parent_id && commentMap[c.parent_id]) {
+          commentMap[c.parent_id].replies.push(c);
         } else {
-          topLevelComments.push(comment);
+          topLevelComments.push(c);
         }
       }
 
@@ -398,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }
 
-      commentsList.innerHTML = topLevelComments.map(comment => renderComment(comment, 0)).join('');
+      commentsList.innerHTML = topLevelComments.map(c => renderComment(c, 0)).join('');
 
       // Attach reply handlers
       document.querySelectorAll(`.reply-btn[data-post-id="${postId}"]`).forEach(btn => {
