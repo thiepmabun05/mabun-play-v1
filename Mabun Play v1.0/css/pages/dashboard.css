@@ -966,3 +966,58 @@
     height: calc(100vh - 64px); /* adjust height */
   }
 }
+
+/* Coin Badge (in app bar) */
+.coin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card);
+  border-radius: 40px;
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--foreground);
+  text-decoration: none;
+  transition: all 0.2s;
+  border: 1px solid var(--border);
+  margin-left: 8px;
+}
+.coin-badge iconify-icon {
+  font-size: 1.2rem;
+  color: #f5b042;  /* gold color */
+}
+.coin-badge:hover {
+  background: var(--secondary);
+  border-color: var(--primary);
+}
+
+/* Wallet badge remains as is (already defined in your dashboard.css) */
+.wallet-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card);
+  border-radius: 40px;
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--foreground);
+  text-decoration: none;
+  transition: all 0.2s;
+  border: 1px solid var(--border);
+}
+.wallet-badge iconify-icon {
+  font-size: 1.2rem;
+  color: var(--primary);
+}
+.wallet-badge:hover {
+  background: var(--secondary);
+  border-color: var(--primary);
+}
+
+/* Coin Stat (in stats grid) */
+.stat-icon.coins {
+  background: rgba(245, 176, 66, 0.1);
+  color: #f5b042;
+}
