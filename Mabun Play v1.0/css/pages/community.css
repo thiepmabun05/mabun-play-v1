@@ -451,17 +451,116 @@
   cursor: pointer;
 }
 
-.comment-reply {
-  margin-left: 20px;
-  border-left: 2px solid #ddd;
-  padding-left: 10px;
-}
+/* Reply button */
 .reply-btn {
-  margin-left: 10px;
-  font-size: 12px;
-  color: #666;
+  background: none;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
   cursor: pointer;
+  padding: 0;
+  margin-left: var(--space-s);
+  transition: color 0.2s;
 }
+.reply-btn:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+/* Reply input container */
 .reply-input-container {
-  margin-top: 5px;
+  margin-top: var(--space-s);
+  margin-left: 40px; /* aligns under the comment */
+  width: calc(100% - 40px);
+  transition: all 0.2s;
+}
+
+.reply-input-wrapper {
+  display: flex;
+  gap: var(--space-s);
+  background: var(--muted);
+  border-radius: var(--radius-md);
+  padding: var(--space-xs) var(--space-s);
+  align-items: center;
+}
+
+.reply-input {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-s);
+  font-size: var(--text-sm);
+  outline: none;
+}
+.reply-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(104, 0, 128, 0.1);
+}
+
+.reply-submit {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-m);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.reply-submit:hover {
+  background: var(--primary-light);
+}
+
+/* Nested comment styling (already handled by margin-left) */
+.comment {
+  margin-bottom: var(--space-m);
+  position: relative;
+}
+
+.comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: var(--space-s);
+}
+
+.comment-body {
+  flex: 1;
+}
+
+.comment-author {
+  font-weight: var(--font-semibold);
+  color: var(--foreground);
+  text-decoration: none;
+  margin-right: var(--space-xs);
+}
+.comment-author:hover {
+  text-decoration: underline;
+}
+
+.comment-text {
+  color: var(--foreground);
+  word-break: break-word;
+}
+
+.comment-time {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  margin-left: var(--space-s);
+}
+
+.comment {
+  display: flex;
+  gap: var(--space-s);
+  margin-bottom: var(--space-m);
+}
+
+.comment-body {
+  flex: 1;
+}
+
+.comment-avatar-link {
+  flex-shrink: 0;
 }
