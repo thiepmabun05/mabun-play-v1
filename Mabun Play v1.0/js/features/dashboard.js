@@ -5,8 +5,8 @@ import { formatCurrency } from '../utils/formatters.js';
 // DOM elements
 const elements = {
   walletAmount: document.getElementById('wallet-amount'),
-  coinBalance: document.getElementById('coin-balance'),          // coin badge
-  statCoins: document.getElementById('stat-coins-value'),       // coins in stats
+  coinBalance: document.getElementById('coin-balance'),
+  statCoins: document.getElementById('stat-coins-value'),
   userName: document.getElementById('user-name'),
   liveTimer: document.getElementById('live-timer'),
   nextQuizTimer: document.getElementById('next-quiz-timer'),
@@ -84,9 +84,9 @@ async function fetchDashboard() {
     state.user.played = profile.played || 0;
     state.user.rank = profile.rank || 0;
     state.user.wallet = profile.wallet_balance || 0;
-    state.user.coins = profile.coins_balance || 15000;   // default 15000
+    state.user.coins = profile.coins_balance || 15000;
 
-    // 1. Try to fetch active hourly quiz from database
+    // ----- Live Hourly Quiz -----
     const { data: liveQuiz, error: liveError } = await supabase
       .from('quizzes')
       .select('id, title, prize_pool, current_quiz_ends_at, next_quiz_starts_at, status, participant_count')
@@ -96,8 +96,9 @@ async function fetchDashboard() {
       .limit(1)
       .maybeSingle();
 
-    if (!liveError && liveQuiz) {
-      // Use the real quiz from database
+    if (liveError) throw liveError;
+
+    if (liveQuiz && liveQuiz.id) {
       state.liveQuiz = {
         id: liveQuiz.id,
         title: liveQuiz.title,
@@ -109,45 +110,26 @@ async function fetchDashboard() {
         hasPaid: false,
         participantCount: liveQuiz.participant_count,
       };
-      console.log('✅ Using real quiz from DB:', state.liveQuiz.id);
     } else {
-      // Fallback to the hardcoded 9:40 PM quiz (ID: a1b2c3d4-e5f6-7890-1234-567890abcdef)
-      // Set timers relative to current time for realistic display.
-      const now = new Date();
-      const startTime = new Date('2026-03-21T21:40:00+00:00');
-      const endTime = new Date('2026-03-21T21:56:40+00:00');
-      // If the start time is already in the past, use now as start for demo.
-      if (now > startTime) {
-        // Quiz already started – use the actual remaining time based on end time
-        const remainingMs = endTime - now;
-        if (remainingMs > 0) {
-          state.liveQuiz.currentQuizEndsAt = endTime.toISOString();
-          state.liveQuiz.nextQuizStartsAt = startTime.toISOString();
-        } else {
-          // Quiz already ended – fallback to a dummy future quiz
-          state.liveQuiz.currentQuizEndsAt = new Date(now.getTime() + 40 * 60 * 1000).toISOString();
-          state.liveQuiz.nextQuizStartsAt = new Date(now.getTime() + 40 * 60 * 1000).toISOString();
-        }
-      } else {
-        // Not started yet – use original times
-        state.liveQuiz.currentQuizEndsAt = endTime.toISOString();
-        state.liveQuiz.nextQuizStartsAt = startTime.toISOString();
-      }
+      // No active quiz – disable joining
       state.liveQuiz = {
-        id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
-        title: 'General Knowledge Hourly',
-        prizePool: 10000,
-        currentQuizEndsAt: state.liveQuiz.currentQuizEndsAt,
-        nextQuizStartsAt: state.liveQuiz.nextQuizStartsAt,
-        canPay: true,
-        canJoin: true,
+        id: null,
+        title: 'No active quiz',
+        prizePool: 0,
+        currentQuizEndsAt: null,
+        nextQuizStartsAt: null,
+        canPay: false,
+        canJoin: false,
         hasPaid: false,
         participantCount: 0,
       };
-      console.warn('⚠️ No active hourly quiz found, using fallback (9:40 PM)');
+      if (elements.liveQuizTitle) elements.liveQuizTitle.textContent = 'No active quiz';
+      if (elements.hourlyPrize) elements.hourlyPrize.textContent = '0 Coins';
+      if (elements.payBtn) elements.payBtn.disabled = true;
+      if (elements.joinBtn) elements.joinBtn.disabled = true;
     }
 
-    // Daily challenge
+    // ----- Daily Challenge -----
     const { data: daily, error: dailyError } = await supabase
       .from('challenges')
       .select('prize_pool, payout_time')
@@ -167,7 +149,7 @@ async function fetchDashboard() {
       if (entry) state.dailyChallenge.hasEntered = true;
     }
 
-    // Weekly challenge
+    // ----- Weekly Challenge -----
     const { data: weekly, error: weeklyError } = await supabase
       .from('challenges')
       .select('prize_pool, ends_at, payout_time')
@@ -188,7 +170,7 @@ async function fetchDashboard() {
       if (entry) state.weeklyChallenge.hasEntered = true;
     }
 
-    // Auto-subscribe
+    // ----- Auto-Subscribe -----
     const { data: sub } = await supabase
       .from('subscriptions')
       .select('id')
@@ -200,7 +182,7 @@ async function fetchDashboard() {
     renderAll();
     updateTimers();
 
-    // Subscribe to live quiz updates
+    // Subscribe to live quiz updates (only if we have a quiz)
     if (state.liveQuiz.id) {
       if (quizSubscription) quizSubscription.unsubscribe();
       quizSubscription = supabase
@@ -258,7 +240,7 @@ function renderLiveQuiz() {
       elements.payBtn.disabled = true;
     } else {
       elements.payBtn.textContent = 'Use 100 Coins';
-      elements.payBtn.disabled = false;
+      elements.payBtn.disabled = !state.liveQuiz.canPay;
     }
   }
 }
@@ -328,13 +310,14 @@ function updateTimers() {
 }
 
 function updateButtonStates() {
-  if (elements.payBtn) elements.payBtn.disabled = state.liveQuiz.hasPaid;
+  if (elements.payBtn) elements.payBtn.disabled = state.liveQuiz.hasPaid || !state.liveQuiz.canPay;
   if (elements.joinBtn) elements.joinBtn.disabled = !state.liveQuiz.canJoin;
   if (elements.dailyChallengeBtn) elements.dailyChallengeBtn.disabled = state.dailyChallenge.hasEntered;
   if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.disabled = state.weeklyChallenge.hasEntered;
 }
 
 async function handlePayEntry() {
+  if (!state.liveQuiz.canPay) return;
   state.liveQuiz.hasPaid = true;
   state.liveQuiz.canJoin = true;
   renderLiveQuiz();
@@ -360,14 +343,12 @@ async function handleJoinQuiz() {
     if (error) throw error;
     if (data.error) {
       if (data.error === 'Already joined') {
-        // Resume existing session
         window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${data.session_id}`;
         return;
       }
       throw new Error(data.error);
     }
 
-    // Update local coin balance
     state.user.coins = data.new_balance;
     renderUser();
 
