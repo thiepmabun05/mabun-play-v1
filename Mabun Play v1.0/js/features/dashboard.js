@@ -5,8 +5,8 @@ import { formatCurrency } from '../utils/formatters.js';
 // DOM elements
 const elements = {
   walletAmount: document.getElementById('wallet-amount'),
-  coinBalance: document.getElementById('coin-balance'),          // coin badge
-  statCoins: document.getElementById('stat-coins-value'),       // coins in stats
+  coinBalance: document.getElementById('coin-balance'),
+  statCoins: document.getElementById('stat-coins-value'),
   userName: document.getElementById('user-name'),
   liveTimer: document.getElementById('live-timer'),
   nextQuizTimer: document.getElementById('next-quiz-timer'),
@@ -83,7 +83,7 @@ async function fetchDashboard() {
     state.user.played = profile.played || 0;
     state.user.rank = profile.rank || 0;
     state.user.wallet = profile.wallet_balance || 0;
-    state.user.coins = profile.coins_balance || 15000;   // default 15000
+    state.user.coins = profile.coins_balance || 15000;
 
     // Live quiz (hourly)
     const { data: liveQuiz, error: liveError } = await supabase
@@ -219,18 +219,26 @@ function renderUser() {
 
 function renderLiveQuiz() {
   if (elements.liveQuizTitle) elements.liveQuizTitle.textContent = state.liveQuiz.title;
-  if (elements.hourlyPrize) elements.hourlyPrize.textContent = formatCurrency(state.liveQuiz.prizePool);
-  if (elements.payBtn) elements.payBtn.textContent = `Use 100 Coins`;
+  if (elements.hourlyPrize) elements.hourlyPrize.textContent = `${state.liveQuiz.prizePool.toLocaleString()} Coins`;
+  if (elements.payBtn) {
+    if (state.liveQuiz.hasPaid) {
+      elements.payBtn.textContent = 'Paid';
+      elements.payBtn.disabled = true;
+    } else {
+      elements.payBtn.textContent = 'Use 100 Coins';
+      elements.payBtn.disabled = false;
+    }
+  }
 }
 
 function renderDaily() {
-  if (elements.dailyPrize) elements.dailyPrize.textContent = formatCurrency(state.dailyChallenge.prizePool);
+  if (elements.dailyPrize) elements.dailyPrize.textContent = `${state.dailyChallenge.prizePool.toLocaleString()} Coins`;
   if (elements.todayDate) elements.todayDate.textContent = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   if (elements.dailyChallengeBtn) elements.dailyChallengeBtn.textContent = state.dailyChallenge.hasEntered ? 'Entered' : 'Enter Challenge';
 }
 
 function renderWeekly() {
-  if (elements.weeklyPrize) elements.weeklyPrize.textContent = formatCurrency(state.weeklyChallenge.prizePool);
+  if (elements.weeklyPrize) elements.weeklyPrize.textContent = `${state.weeklyChallenge.prizePool.toLocaleString()} Coins`;
   if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.textContent = state.weeklyChallenge.hasEntered ? 'Entered' : 'Enter Challenge';
 }
 
@@ -288,7 +296,7 @@ function updateTimers() {
 }
 
 function updateButtonStates() {
-  if (elements.payBtn) elements.payBtn.disabled = false;
+  if (elements.payBtn) elements.payBtn.disabled = state.liveQuiz.hasPaid;
   if (elements.joinBtn) elements.joinBtn.disabled = !state.liveQuiz.canJoin;
   if (elements.dailyChallengeBtn) elements.dailyChallengeBtn.disabled = state.dailyChallenge.hasEntered;
   if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.disabled = state.weeklyChallenge.hasEntered;
@@ -318,7 +326,14 @@ async function handleJoinQuiz() {
       p_user_id: user.id
     });
     if (error) throw error;
-    if (data.error) throw new Error(data.error);
+    if (data.error) {
+      if (data.error === 'Already joined') {
+        // Resume existing session
+        window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${data.session_id}`;
+        return;
+      }
+      throw new Error(data.error);
+    }
 
     // Update local coin balance
     state.user.coins = data.new_balance;
@@ -375,6 +390,12 @@ async function handleChallengeEntry(e) {
       await showModal({
         title: 'Insufficient Coins',
         message: 'You need more Mabun coins to enter this challenge.',
+        confirmText: 'OK'
+      });
+    } else if (err.message === 'Already entered for this period') {
+      await showModal({
+        title: 'Already Entered',
+        message: `You have already entered the ${challenge} challenge for this period.`,
         confirmText: 'OK'
       });
     } else {
