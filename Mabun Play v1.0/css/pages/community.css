@@ -450,3 +450,18 @@
   padding: var(--space-s) var(--space-m);
   cursor: pointer;
 }
+
+.comment-reply {
+  margin-left: 20px;
+  border-left: 2px solid #ddd;
+  padding-left: 10px;
+}
+.reply-btn {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+}
+.reply-input-container {
+  margin-top: 5px;
+}
