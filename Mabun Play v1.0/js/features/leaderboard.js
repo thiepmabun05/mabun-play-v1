@@ -48,12 +48,14 @@ async function fetchCurrent() {
 
   try {
     if (currentType === 'hourly') {
-      // Get active hourly quiz
+      // Get the most recent active hourly quiz
       const { data, error } = await supabase
         .from('quizzes')
         .select('id, title, prize_pool, next_question_at')
         .eq('type', 'hourly')
         .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
       if (data) {
@@ -72,15 +74,17 @@ async function fetchCurrent() {
         return;
       }
     } else {
-      // Daily or weekly challenge
+      // Daily or weekly challenge – get the most recent challenge of that type
       const { data, error } = await supabase
         .from('challenges')
         .select('prize_pool, ends_at')
         .eq('type', currentType)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
       if (data) {
-        currentData.id = null; // not needed for challenges
+        currentData.id = null;
         currentData.prizePool = data.prize_pool;
         currentData.endTime = data.ends_at;
         currentData.leaderboardTable = 'challenge_leaderboard';
@@ -128,10 +132,11 @@ async function fetchLeaderboard() {
   if (!supabase || !currentData.leaderboardTable) return;
 
   try {
+    const orderColumn = currentData.leaderboardTable === 'quiz_leaderboard' ? 'score' : 'total_score';
     let query = supabase
       .from(currentData.leaderboardTable)
       .select('*')
-      .order('score', { ascending: false })      // for hourly, 'score'; for challenge, 'total_score'
+      .order(orderColumn, { ascending: false })
       .limit(100);
 
     if (currentData.filterField === 'quiz_id') {
@@ -145,6 +150,7 @@ async function fetchLeaderboard() {
     renderLeaderboard(data || []);
   } catch (err) {
     console.error('Error fetching leaderboard:', err);
+    elements.leaderboardList.innerHTML = '<div class="empty-state">Error loading leaderboard</div>';
   }
 }
 
@@ -178,7 +184,7 @@ function renderLeaderboard(players) {
           player.rank === 3 ? '<iconify-icon icon="solar:medal-ribbon-bold"></iconify-icon>' : player.rank}
       </div>
       <div class="avatar">
-        <img src="${player.avatar_url || '/assets/images/default-avatar.png'}" alt="${player.username}">
+        <img src="${player.avatar_url || '/assets/images/default-avatar.png'}" alt="${escapeHtml(player.username)}">
       </div>
       <div class="player-info">
         <div class="player-name">${escapeHtml(player.username)}</div>
@@ -239,6 +245,7 @@ function escapeHtml(str) {
 
 // Initialization
 (async function init() {
+  // Wait for Supabase client
   let retries = 0;
   while (!window.supabaseClient && retries < 20) {
     await new Promise(r => setTimeout(r, 50));
