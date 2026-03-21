@@ -563,3 +563,14 @@
     max-width: 700px;
   }
 }
+
+/* Create post avatar – enforce exact size */
+.create-post-card .post-avatar {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+}
