@@ -509,17 +509,3 @@
 .comment-submit:hover {
   background: var(--primary-light);
 }
-
-.comment {
-  display: flex;
-  gap: var(--space-s);
-  margin-bottom: var(--space-m);
-}
-
-.comment-body {
-  flex: 1;
-}
-
-.comment-avatar-link {
-  flex-shrink: 0;
-}
