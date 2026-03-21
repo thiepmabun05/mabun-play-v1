@@ -572,3 +572,7 @@
     padding: var(--space-xs) var(--space-s);
   }
 }
+.comment {
+  max-width: 100%;
+  overflow-x: auto; /* allow scroll if absolutely necessary, but better to wrap */
+}
