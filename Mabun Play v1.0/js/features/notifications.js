@@ -1,4 +1,3 @@
-// js/features/notifications.js
 import { showModal } from '../utils/modal.js';
 import { timeAgo } from '../utils/formatters.js';
 
@@ -48,23 +47,34 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    list.innerHTML = notifications.map(n => `
-      <div class="notification-item ${n.read ? 'read' : 'unread'}" data-id="${n.id}">
-        <div class="notification-icon">
-          <iconify-icon icon="${n.icon || 'solar:info-circle-bold'}"></iconify-icon>
-        </div>
-        <div class="notification-content">
-          <div class="notification-title">${n.title}</div>
-          <div class="notification-message">${n.message}</div>
-          <div class="notification-time">${timeAgo(n.created_at)}</div>
-        </div>
-        ${!n.read ? '<span class="unread-dot"></span>' : ''}
-      </div>
-    `).join('');
+    list.innerHTML = notifications.map(n => {
+      let icon = 'solar:info-circle-bold';
+      if (n.type === 'comment') icon = 'solar:chat-round-bold';
+      else if (n.type === 'like') icon = 'solar:heart-bold';
+      else if (n.type === 'follow') icon = 'solar:user-plus-bold';
+      else if (n.type === 'quiz_reminder') icon = 'solar:clock-circle-bold';
+      else if (n.type === 'payment') icon = 'solar:wallet-bold';
 
+      return `
+        <div class="notification-item ${n.read ? 'read' : 'unread'}" data-id="${n.id}" data-link="${n.link || '#'}">
+          <div class="notification-icon">
+            <iconify-icon icon="${icon}"></iconify-icon>
+          </div>
+          <div class="notification-content">
+            <div class="notification-title">${escapeHtml(n.title)}</div>
+            <div class="notification-message">${escapeHtml(n.message)}</div>
+            <div class="notification-time">${timeAgo(n.created_at)}</div>
+          </div>
+          ${!n.read ? '<span class="unread-dot"></span>' : ''}
+        </div>
+      `;
+    }).join('');
+
+    // Attach click handler to each notification (to mark as read and navigate)
     document.querySelectorAll('.notification-item').forEach(item => {
       item.addEventListener('click', async () => {
         const id = item.dataset.id;
+        const link = item.dataset.link;
         try {
           await supabase
             .from('notifications')
@@ -75,7 +85,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
           console.error('Failed to mark as read:', error);
         }
+        if (link && link !== '#') {
+          window.location.href = link;
+        }
       });
     });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 });
