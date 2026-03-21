@@ -357,90 +357,102 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------- Load Comments (with nested replies) ----------
   async function loadComments(postId) {
-    try {
-      const { data: comments, error } = await supabase
-        .from('comments')
-        .select('id, text, user_id, created_at, parent_id')
-        .eq('post_id', postId)
-        .order('created_at', { ascending: true });
+  try {
+    const { data: comments, error } = await supabase
+      .from('comments')
+      .select('id, text, user_id, created_at, parent_id')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      const commentsList = document.getElementById(`comments-${postId}`);
-      if (!commentsList) return;
+    const commentsList = document.getElementById(`comments-${postId}`);
+    if (!commentsList) return;
 
-      if (!comments || comments.length === 0) {
-        commentsList.innerHTML = '<p class="no-comments">No comments yet.</p>';
-        return;
+    if (!comments || comments.length === 0) {
+      commentsList.innerHTML = '<p class="no-comments">No comments yet.</p>';
+      return;
+    }
+
+    // Fetch profiles for all comment authors
+    const userIds = [...new Set(comments.map(c => c.user_id))];
+    const profileMap = await fetchProfiles(userIds); // fetchProfiles must be defined
+
+    // Build comment tree
+    const commentMap = {};
+    comments.forEach(comment => {
+      commentMap[comment.id] = {
+        ...comment,
+        profile: profileMap[comment.user_id] || { username: 'Unknown', avatar_url: null },
+        replies: [],
+      };
+    });
+
+    const topLevelComments = [];
+    for (const id in commentMap) {
+      const c = commentMap[id];
+      if (c.parent_id && commentMap[c.parent_id]) {
+        commentMap[c.parent_id].replies.push(c);
+      } else {
+        topLevelComments.push(c);
       }
+    }
 
-      // Fetch profiles for all comment authors
-      const userIds = [...new Set(comments.map(c => c.user_id))];
-      const profileMap = await fetchProfiles(userIds);
-
-      // Build comment tree
-      const commentMap = {};
-      comments.forEach(comment => {
-        commentMap[comment.id] = {
-          ...comment,
-          profile: profileMap[comment.user_id] || { username: 'Unknown', avatar_url: null },
-          replies: [],
-        };
-      });
-
-      const topLevelComments = [];
-      for (const id in commentMap) {
-        const c = commentMap[id];
-        if (c.parent_id && commentMap[c.parent_id]) {
-          commentMap[c.parent_id].replies.push(c);
-        } else {
-          topLevelComments.push(c);
-        }
-      }
-
-      // Render recursively
-      function renderComment(comment, level = 0) {
-        const marginLeft = level * 20;
-        return `
-          <div class="comment" style="margin-left: ${marginLeft}px">
-            <a href="profile.html?userId=${comment.user_id}" class="comment-avatar-link">
-              <img src="${comment.profile.avatar_url || '/assets/images/default-avatar.png'}" alt="" class="comment-avatar">
-            </a>
-            <div class="comment-body">
-              <a href="profile.html?userId=${comment.user_id}" class="comment-author">${escapeHtml(comment.profile.username)}</a>
-              <span class="comment-text">${escapeHtml(comment.text)}</span>
-              <span class="comment-time">${formatTime(comment.created_at)}</span>
-              <button class="reply-btn" data-comment-id="${comment.id}" data-post-id="${postId}">Reply</button>
-            </div>
-            <div class="reply-input-container" style="display: none; margin-left: 40px;">
+    // Recursive render function
+    function renderComment(comment, level = 0) {
+      const marginLeft = level * 20;
+      return `
+        <div class="comment" style="margin-left: ${marginLeft}px">
+          <a href="profile.html?userId=${comment.user_id}" class="comment-avatar-link">
+            <img src="${comment.profile.avatar_url || '/assets/images/default-avatar.png'}" alt="" class="comment-avatar">
+          </a>
+          <div class="comment-body">
+            <a href="profile.html?userId=${comment.user_id}" class="comment-author">${escapeHtml(comment.profile.username)}</a>
+            <span class="comment-text">${escapeHtml(comment.text)}</span>
+            <span class="comment-time">${formatTime(comment.created_at)}</span>
+            <button class="reply-btn" data-comment-id="${comment.id}" data-post-id="${postId}">Reply</button>
+          </div>
+          <div class="reply-input-container" style="display: none;">
+            <div class="reply-input-wrapper">
               <input type="text" class="reply-input" placeholder="Write a reply...">
               <button class="reply-submit">Post Reply</button>
             </div>
           </div>
-          ${comment.replies.map(reply => renderComment(reply, level + 1)).join('')}
-        `;
+        </div>
+        ${comment.replies.map(reply => renderComment(reply, level + 1)).join('')}
+      `;
+    }
+
+    commentsList.innerHTML = topLevelComments.map(c => renderComment(c, 0)).join('');
+
+    // ----- Event delegation for reply actions -----
+    commentsList.removeEventListener('click', handleCommentClicks);
+    commentsList.addEventListener('click', handleCommentClicks);
+
+    function handleCommentClicks(e) {
+      // Reply button clicked
+      const replyBtn = e.target.closest('.reply-btn');
+      if (replyBtn) {
+        e.preventDefault();
+        const container = replyBtn.closest('.comment-body').nextElementSibling;
+        if (container) {
+          // Toggle display
+          container.style.display = container.style.display === 'none' ? 'block' : 'none';
+        }
+        return;
       }
 
-      commentsList.innerHTML = topLevelComments.map(c => renderComment(c, 0)).join('');
-
-      // Attach reply handlers
-      document.querySelectorAll(`.reply-btn[data-post-id="${postId}"]`).forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const container = btn.closest('.comment-body').nextElementSibling;
-          if (container) {
-            container.style.display = container.style.display === 'none' ? 'block' : 'none';
-          }
-        });
-      });
-
-      document.querySelectorAll(`.reply-submit`).forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          const container = btn.closest('.reply-input-container');
-          const input = container.querySelector('.reply-input');
-          const text = input.value.trim();
-          if (!text) return;
-          const parentCommentId = container.closest('.comment').querySelector('.reply-btn')?.dataset.commentId;
-          if (!parentCommentId) return;
+      // Reply submit button clicked
+      const submitBtn = e.target.closest('.reply-submit');
+      if (submitBtn) {
+        e.preventDefault();
+        const container = submitBtn.closest('.reply-input-container');
+        const input = container.querySelector('.reply-input');
+        const text = input.value.trim();
+        if (!text) return;
+        const parentCommentId = container.closest('.comment').querySelector('.reply-btn')?.dataset.commentId;
+        if (!parentCommentId) return;
+        (async () => {
           try {
             await supabase.from('comments').insert({
               post_id: postId,
@@ -450,7 +462,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             input.value = '';
             container.style.display = 'none';
-            await loadComments(postId);
+            await loadComments(postId); // reload comments to show the new reply
+            // Update comment count on the post
             const commentToggle = document.querySelector(`.post-card[data-post-id="${postId}"] .comment-toggle span`);
             if (commentToggle) {
               commentToggle.textContent = parseInt(commentToggle.textContent) + 1;
@@ -458,13 +471,13 @@ document.addEventListener('DOMContentLoaded', () => {
           } catch (error) {
             showModal({ title: 'Error', message: error.message, confirmText: 'OK' });
           }
-        });
-      });
-    } catch (error) {
-      console.error('Failed to load comments:', error);
+        })();
+      }
     }
+  } catch (error) {
+    console.error('Failed to load comments:', error);
   }
-
+}
   // ---------- Create a New Post ----------
   async function createPost(content, imageFile) {
     let imageUrl = null;
