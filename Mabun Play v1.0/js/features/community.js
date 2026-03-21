@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return div;
   }
 
-  // ---------- Load Comments (nested, without inline reply forms) ----------
+  // ---------- Load Comments (nested, with CSS class indentation) ----------
   async function loadComments(postId) {
     try {
       const { data: comments, error } = await supabase
@@ -374,24 +374,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // Render recursively
+      // Render recursively with CSS classes for indentation
       function renderComment(comment, level = 0) {
-  const indentClass = level > 0 ? `comment-indent-${Math.min(level, 5)}` : '';
-  return `
-    <div class="comment ${indentClass}">
-      <a href="profile.html?userId=${comment.user_id}" class="comment-avatar-link">
-        <img src="${comment.profile.avatar_url || '/assets/images/default-avatar.png'}" alt="" class="comment-avatar">
-      </a>
-      <div class="comment-body">
-        <a href="profile.html?userId=${comment.user_id}" class="comment-author">${escapeHtml(comment.profile.username)}</a>
-        <span class="comment-text">${escapeHtml(comment.text)}</span>
-        <span class="comment-time">${formatTime(comment.created_at)}</span>
-        <button class="reply-btn" data-comment-id="${comment.id}" data-post-id="${postId}">Reply</button>
-      </div>
-    </div>
-    ${comment.replies.map(reply => renderComment(reply, level + 1)).join('')}
-  `;
-}
+        const indentClass = level > 0 ? `comment-indent-${Math.min(level, 5)}` : '';
+        return `
+          <div class="comment ${indentClass}">
+            <a href="profile.html?userId=${comment.user_id}" class="comment-avatar-link">
+              <img src="${comment.profile.avatar_url || '/assets/images/default-avatar.png'}" alt="" class="comment-avatar">
+            </a>
+            <div class="comment-body">
+              <a href="profile.html?userId=${comment.user_id}" class="comment-author">${escapeHtml(comment.profile.username)}</a>
+              <span class="comment-text">${escapeHtml(comment.text)}</span>
+              <span class="comment-time">${formatTime(comment.created_at)}</span>
+              <button class="reply-btn" data-comment-id="${comment.id}" data-post-id="${postId}">Reply</button>
+            </div>
+          </div>
+          ${comment.replies.map(reply => renderComment(reply, level + 1)).join('')}
+        `;
+      }
+
+      commentsList.innerHTML = topLevelComments.map(c => renderComment(c, 0)).join('');
+    } catch (error) {
+      console.error('Failed to load comments:', error);
+    }
+  }
 
   // ---------- Create a New Post ----------
   async function createPost(content, imageFile) {
