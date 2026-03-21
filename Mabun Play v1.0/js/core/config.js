@@ -5,8 +5,8 @@ const DEFAULTS = {
   WS_BASE_URL: 'wss://ws.mabunplay.com',
 
   // Supabase credentials (these should be overridden via window.__APP_CONFIG__ or environment variables)
-  SUPABASE_URL: 'https://iarjbnklktgcetfpayks.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlhcmpibmtsa3RnY2V0ZnBheWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5ODQ2MjAsImV4cCI6MjA4OTU2MDYyMH0.4ZS3espzqXETxwJDxFTs5mP1p2PP21B0cfQ3L8W24S8',
+  SUPABASE_URL: 'https://dfgqqjwknctmwrodcsnb.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmZ3FxandrbmN0bXdyb2Rjc25iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwODA3NzQsImV4cCI6MjA4OTY1Njc3NH0.2HtPMuVokKHSgzLUY6ChS7Wcj2dmAUHmutlS_86X2M42MDYyMH0.4ZS3espzqXETxwJDxFTs5mP1p2PP21B0cfQ3L8W24S8',
 
   // Feature flags
   ENABLE_PAYMENTS: false,          // Payment gateway integration
