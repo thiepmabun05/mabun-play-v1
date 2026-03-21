@@ -268,36 +268,17 @@ async function handleJoinQuiz() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { count, error: countError } = await supabase
-      .from('questions')
-      .select('*', { count: 'exact', head: true })
-      .eq('quiz_id', state.liveQuiz.id);
+    const { data, error } = await supabase.rpc('join_quiz', {
+      p_quiz_id: state.liveQuiz.id,
+      p_user_id: user.id
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
 
-    if (countError) throw countError;
-    if (!count) {
-      await showModal({ title: 'No Questions', message: 'This quiz has no questions yet.', confirmText: 'OK' });
-      return;
-    }
-
-    const { data: session, error: insertError } = await supabase
-      .from('quiz_sessions')
-      .insert({
-        quiz_id: state.liveQuiz.id,
-        user_id: user.id,
-        status: 'active',
-        started_at: new Date().toISOString(),
-        total_questions: count,
-        current_question_index: 0,
-        score: 0,
-        streak: 0,
-      })
-      .select()
-      .single();
-
-    if (insertError) throw insertError;
+    const session = data.session;
     window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${session.id}`;
   } catch (err) {
-    console.error('Join error:', err);
+    console.error(err);
     await showModal({ title: 'Join Failed', message: err.message || 'Could not join quiz.', confirmText: 'OK' });
   }
 }
