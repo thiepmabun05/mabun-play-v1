@@ -12,7 +12,6 @@ const isLocal =
 // 🚫 Disable Service Worker for now (prevents caching/auth issues)
 if ('serviceWorker' in navigator && !isLocal) {
   console.log('Service Worker disabled during development');
-  // To enable later, uncomment below AFTER app is stable
   /*
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js')
@@ -46,13 +45,39 @@ function waitForSupabase() {
 }
 
 // ==============================
+// 📄 PUBLIC PAGES (NO AUTH LOGIC)
+// ==============================
+const PUBLIC_PAGES = [
+  'index.html',
+  'login.html',
+  'register.html',
+  'forgot-password.html',
+  'reset-password.html',
+  'complete-profile.html',
+  'privacy.html',
+  'terms.html',
+  'support.html'
+];
+
+// ==============================
 // 🔐 INIT APP (MAIN ENTRY)
 // ==============================
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const supabase = await waitForSupabase();
 
-    // ✅ Wait for session BEFORE running auth guard
+    const currentPath =
+      window.location.pathname.split('/').pop() || 'index.html';
+
+    // 🚀 CRITICAL FIX: Skip ALL auth logic on public pages
+    if (PUBLIC_PAGES.includes(currentPath)) {
+      console.log('✅ Public page detected, skipping auth guard:', currentPath);
+      return;
+    }
+
+    // ==============================
+    // 🔒 PRIVATE PAGE LOGIC ONLY
+    // ==============================
     const { data, error } = await supabase.auth.getSession();
 
     if (error) {
@@ -96,6 +121,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ==============================
 waitForSupabase().then((supabase) => {
   supabase.auth.onAuthStateChange((event, session) => {
+    // 🚀 CRITICAL FIX: Ignore initial trigger (prevents refresh loop)
+    if (event === 'INITIAL_SESSION') return;
+
+    console.log('Auth event:', event);
+
     try {
       if (session?.user) {
         localStorage.setItem('mabun_user', JSON.stringify(session.user));
