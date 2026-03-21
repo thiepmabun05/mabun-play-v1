@@ -21,17 +21,21 @@ let quizId = null;
 let sessionId = null;
 let currentQuestion = null;
 let timeLeft = 0;
+let totalTimeAllowed = 0;
 let timerInterval = null;
 let answerSubmitted = false;
 let loading = false;
-let waitingForNext = false;
-let pollInterval = null;
-let quizSubscription = null;
+let nextQuestionTimer = null;
 
 function getUrlParams() {
   const urlParams = new URLSearchParams(window.location.search);
   quizId = urlParams.get('id');
   sessionId = urlParams.get('session');
+}
+
+function setLoading(isLoading) {
+  loading = isLoading;
+  elements.optionBtns.forEach(btn => btn.disabled = isLoading);
 }
 
 function stopTimer() {
@@ -41,55 +45,95 @@ function stopTimer() {
   }
 }
 
-function stopPoll() {
-  if (pollInterval) {
-    clearInterval(pollInterval);
-    pollInterval = null;
+function clearNextTimer() {
+  if (nextQuestionTimer) {
+    clearTimeout(nextQuestionTimer);
+    nextQuestionTimer = null;
   }
 }
 
-async function fetchCurrentState() {
-  const supabase = window.supabaseClient;
-  if (!supabase) return;
+function updateTimerDisplay() {
+  if (!elements.timerText) return;
+  elements.timerText.textContent = timeLeft;
+
+  if (elements.timerProgress && totalTimeAllowed > 0) {
+    const circumference = 2 * Math.PI * 18;
+    const offset = circumference * (1 - timeLeft / totalTimeAllowed);
+    elements.timerProgress.style.strokeDashoffset = offset;
+
+    if (timeLeft <= 3) {
+      elements.timerProgress.style.stroke = 'var(--error)';
+    } else if (timeLeft <= 5) {
+      elements.timerProgress.style.stroke = 'var(--warning)';
+    } else {
+      elements.timerProgress.style.stroke = 'var(--success)';
+    }
+  }
+}
+
+function startTimer(seconds) {
+  stopTimer();
+  clearNextTimer();
+  totalTimeAllowed = seconds;
+  timeLeft = seconds;
+  answerSubmitted = false;
+  updateTimerDisplay();
+
+  timerInterval = setInterval(() => {
+    timeLeft -= 1;
+    updateTimerDisplay();
+
+    if (timeLeft <= 0) {
+      stopTimer();
+      if (!answerSubmitted && !loading) {
+        submitAnswer(null);
+      }
+    }
+  }, 1000);
+}
+
+async function loadNextQuestion() {
+  stopTimer();
+  setLoading(true);
+  answerSubmitted = false;
+
   try {
-    const { data, error } = await supabase.rpc('get_current_question', { p_session_id: sessionId });
+    const supabase = window.supabaseClient;
+    if (!supabase) throw new Error('Supabase client not available');
+
+    const { data: next, error } = await supabase.rpc('get_next_question', { session_id: sessionId });
     if (error) throw error;
 
-    if (data.finished) {
+    if (next.finished) {
       window.location.href = `results.html?id=${quizId}&session=${sessionId}`;
       return;
     }
 
-    if (data.waiting) {
-      waitingForNext = true;
-      const nextAt = new Date(data.next_question_at);
-      const diff = Math.max(0, nextAt - Date.now());
-      updateTimerDisplay(Math.floor(diff / 1000));
-      // Poll again in 1 second
-      pollInterval = setTimeout(fetchCurrentState, 1000);
-      return;
-    }
-
-    waitingForNext = false;
-    currentQuestion = data.question;
-    if (elements.scoreValue) elements.scoreValue.textContent = data.score;
-    if (elements.streakCount) elements.streakCount.textContent = data.streak;
+    currentQuestion = next.question;
+    if (elements.scoreValue) elements.scoreValue.textContent = next.session.score;
+    if (elements.streakCount) elements.streakCount.textContent = next.session.streak;
     if (elements.questionCounter) {
-      elements.questionCounter.textContent = `${data.current_index + 1}/${data.total_questions}`;
+      elements.questionCounter.textContent = `${next.session.currentQuestionIndex + 1}/${next.session.totalQuestions}`;
     }
 
     renderQuestion(currentQuestion);
-    startTimer(data.time_left);
   } catch (err) {
-    console.error(err);
-    await showModal({ title: 'Error', message: err.message, confirmText: 'OK' });
+    console.error('Failed to load next question:', err);
+    await showModal({
+      title: 'Error',
+      message: err.message || 'Could not load next question. Please refresh.',
+      confirmText: 'OK',
+    });
     window.location.href = 'dashboard.html';
+  } finally {
+    setLoading(false);
   }
 }
 
 function renderQuestion(question) {
   if (!question) return;
 
+  if (elements.quizTitle) elements.quizTitle.textContent = 'Quiz';
   if (elements.difficultyStars) {
     const difficulty = question.difficulty || 'medium';
     let starCount = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3;
@@ -118,95 +162,70 @@ function renderQuestion(question) {
       }
     });
   }
-}
-
-function startTimer(seconds) {
-  stopTimer();
-  timeLeft = seconds;
-  updateTimerDisplay(timeLeft);
-
-  timerInterval = setInterval(() => {
-    if (waitingForNext) return;
-    timeLeft -= 1;
-    updateTimerDisplay(timeLeft);
-
-    if (timeLeft <= 0 && !answerSubmitted && !loading) {
-      stopTimer();
-      submitAnswer(null);
-    }
-  }, 1000);
-}
-
-function updateTimerDisplay(seconds) {
-  if (elements.timerText) elements.timerText.textContent = seconds;
-  if (elements.timerProgress && currentQuestion?.timeAllowed) {
-    const total = currentQuestion.timeAllowed;
-    const circumference = 2 * Math.PI * 18;
-    const offset = circumference * (1 - seconds / total);
-    elements.timerProgress.style.strokeDashoffset = offset;
-
-    if (seconds <= 3) {
-      elements.timerProgress.style.stroke = 'var(--error)';
-    } else if (seconds <= 5) {
-      elements.timerProgress.style.stroke = 'var(--warning)';
-    } else {
-      elements.timerProgress.style.stroke = 'var(--success)';
-    }
-  }
+  const timeAllowed = question.timeAllowed || 10;
+  startTimer(timeAllowed);
 }
 
 async function submitAnswer(optionId) {
-  if (answerSubmitted || loading || waitingForNext) return;
+  if (answerSubmitted || loading) return;
   answerSubmitted = true;
   stopTimer();
 
   elements.optionBtns.forEach(btn => btn.disabled = true);
 
+  const feedbackDelay = 300;
+  const waitTime = (timeLeft * 1000) + feedbackDelay;
+
   try {
     const supabase = window.supabaseClient;
-    const { data, error } = await supabase.rpc('submit_answer_for_current', {
-      p_session_id: sessionId,
-      p_option_id: optionId
+    if (!supabase) throw new Error('Supabase client not available');
+
+    const { data: result, error } = await supabase.rpc('submit_answer', {
+      session_id: sessionId,
+      question_id: currentQuestion.id,
+      option_id: optionId,
+      time_remaining: timeLeft,
     });
     if (error) throw error;
-    if (data.error) throw new Error(data.error);
 
-    if (elements.scoreValue) elements.scoreValue.textContent = data.newScore;
-    if (elements.streakCount) elements.streakCount.textContent = data.newStreak;
+    if (elements.scoreValue) elements.scoreValue.textContent = result.newScore;
+    if (elements.streakCount) elements.streakCount.textContent = result.newStreak;
 
-    if (data.correctOptionId) {
+    if (result.correctOptionId) {
       elements.optionBtns.forEach(btn => {
-        if (btn.dataset.optionId === data.correctOptionId) {
+        if (btn.dataset.optionId === result.correctOptionId) {
           btn.classList.add('correct');
         }
-        if (optionId && btn.dataset.optionId === optionId && !data.correct) {
+        if (optionId && btn.dataset.optionId === optionId && !result.correct) {
           btn.classList.add('incorrect');
         }
       });
     }
 
-    // Short pause to show feedback, then refetch
-    setTimeout(() => {
-      answerSubmitted = false;
-      fetchCurrentState();
-    }, 500);
+    clearNextTimer();
+    nextQuestionTimer = setTimeout(() => {
+      loadNextQuestion();
+    }, waitTime);
   } catch (err) {
-    console.error(err);
-    await showModal({ title: 'Submission Error', message: err.message, confirmText: 'OK' });
+    console.error('Answer submission failed:', err);
+    await showModal({
+      title: 'Submission Error',
+      message: err.message || 'Your answer could not be recorded. Please refresh.',
+      confirmText: 'OK',
+    });
     setLoading(false);
-    answerSubmitted = false;
+    nextQuestionTimer = setTimeout(() => loadNextQuestion(), 1000);
   }
 }
 
 function onOptionClick(e) {
   const btn = e.currentTarget;
-  if (btn.disabled || answerSubmitted || loading || waitingForNext) return;
+  if (btn.disabled || answerSubmitted || loading) return;
   const optionId = btn.dataset.optionId;
   if (!optionId) return;
 
   elements.optionBtns.forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
-
   submitAnswer(optionId);
 }
 
@@ -227,41 +246,32 @@ async function initQuiz() {
 
   setLoading(true);
   try {
-    await fetchCurrentState();
-
-    // Subscribe to quiz changes to sync timer
     const supabase = window.supabaseClient;
-    quizSubscription = supabase
-      .channel(`quiz-${quizId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'quizzes',
-          filter: `id=eq.${quizId}`,
-        },
-        (payload) => {
-          // If we are waiting, the timer will be updated on the next poll.
-          // For active questions, we can adjust the local timer if the server's next_question_at changes.
-          const newNextAt = payload.new.next_question_at;
-          if (newNextAt && !waitingForNext) {
-            const remaining = Math.max(0, (new Date(newNextAt) - Date.now()) / 1000);
-            // If the difference is significant, sync
-            if (Math.abs(remaining - timeLeft) > 1) {
-              stopTimer();
-              startTimer(remaining);
-            }
-          }
-        }
-      )
-      .subscribe();
+    if (!supabase) throw new Error('Supabase client not available');
 
-    // Poll every 5 seconds as a fallback (but the timer itself will handle transitions)
-    pollInterval = setInterval(fetchCurrentState, 5000);
+    const { data: first, error } = await supabase.rpc('get_next_question', { session_id: sessionId });
+    if (error) throw error;
+
+    if (first.finished) {
+      window.location.href = `results.html?id=${quizId}&session=${sessionId}`;
+      return;
+    }
+
+    currentQuestion = first.question;
+    if (elements.scoreValue) elements.scoreValue.textContent = first.session.score;
+    if (elements.streakCount) elements.streakCount.textContent = first.session.streak;
+    if (elements.questionCounter) {
+      elements.questionCounter.textContent = `${first.session.currentQuestionIndex + 1}/${first.session.totalQuestions}`;
+    }
+
+    renderQuestion(currentQuestion);
   } catch (err) {
-    console.error(err);
-    await showModal({ title: 'Error', message: err.message, confirmText: 'OK' });
+    console.error('Failed to start quiz:', err);
+    await showModal({
+      title: 'Error',
+      message: err.message || 'Could not start the quiz. Please try again.',
+      confirmText: 'OK',
+    });
     window.location.href = 'dashboard.html';
   } finally {
     setLoading(false);
@@ -279,11 +289,6 @@ function attachEvents() {
   }
 }
 
-function setLoading(isLoading) {
-  loading = isLoading;
-  elements.optionBtns.forEach(btn => btn.disabled = isLoading);
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   attachEvents();
   initQuiz();
@@ -291,6 +296,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.addEventListener('beforeunload', () => {
   stopTimer();
-  stopPoll();
-  if (quizSubscription) quizSubscription.unsubscribe();
+  clearNextTimer();
 });
