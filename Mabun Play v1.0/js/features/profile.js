@@ -281,6 +281,8 @@ async function uploadAvatar(file) {
     .update({ avatar_url: publicUrl })
     .eq('id', user.data.user.id);
   if (updateError) throw updateError;
+  // Refresh header avatar
+  if (window.updateHeaderAvatar) window.updateHeaderAvatar();
   return publicUrl;
 }
 
