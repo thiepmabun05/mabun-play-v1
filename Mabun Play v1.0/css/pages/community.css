@@ -451,7 +451,94 @@
   cursor: pointer;
 }
 
-/* Reply context banner */
+/* ---------- Comments Section ---------- */
+.comments-section {
+  margin-top: var(--space-m);
+}
+
+/* Individual comment container */
+.comment {
+  display: flex;
+  gap: var(--space-s);
+  margin-bottom: var(--space-m);
+  max-width: 100%;
+}
+
+/* Avatar on the left */
+.comment-avatar-link {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+}
+.comment-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Comment bubble */
+.comment-body {
+  flex: 1;
+  background: var(--muted);
+  border-radius: 18px;
+  padding: var(--space-s) var(--space-m);
+  overflow: hidden;          /* Prevents overflow from long text */
+  word-break: break-word;    /* Breaks long words */
+  min-width: 0;              /* Allows flex child to shrink below content size */
+}
+
+/* Author, text, time */
+.comment-author {
+  font-weight: 600;
+  color: var(--foreground);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  margin-right: var(--space-xs);
+  display: inline-block;
+}
+.comment-author:hover {
+  text-decoration: underline;
+}
+
+.comment-text {
+  color: var(--foreground);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.comment-time {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  margin-left: var(--space-s);
+  white-space: nowrap;
+}
+
+/* Reply button */
+.reply-btn {
+  background: none;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  margin-left: var(--space-s);
+  transition: color 0.2s;
+  display: inline-block;
+}
+.reply-btn:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+/* ---------- Unified Comment Input ---------- */
+.add-comment {
+  margin-top: var(--space-m);
+}
+
 .reply-context {
   background: var(--secondary);
   padding: var(--space-xs) var(--space-s);
@@ -461,6 +548,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: var(--text-sm);
+  flex-wrap: wrap;
 }
 .reply-context span {
   color: var(--muted-foreground);
@@ -479,13 +567,13 @@
   color: var(--destructive);
 }
 
-/* Unified input wrapper */
 .comment-input-wrapper {
   display: flex;
   gap: var(--space-s);
   background: var(--muted);
   border-radius: 24px;
   padding: var(--space-xs) var(--space-s);
+  width: 100%;
 }
 .comment-input {
   flex: 1;
@@ -494,6 +582,7 @@
   padding: var(--space-xs) 0;
   font-size: var(--text-sm);
   outline: none;
+  min-width: 0;
 }
 .comment-submit {
   background: var(--primary);
@@ -505,7 +594,44 @@
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
+  white-space: nowrap;
 }
 .comment-submit:hover {
   background: var(--primary-light);
+}
+
+/* ---------- Nested Comments ---------- */
+/* The margin-left is applied via inline style (level * 20px) */
+/* We'll keep it but add a max margin to prevent extreme indentation on small screens */
+.comment[style*="margin-left"] {
+  max-width: calc(100% - 20px);
+}
+
+/* ---------- Responsive adjustments ---------- */
+@media (max-width: 640px) {
+  .comment {
+    gap: var(--space-xs);
+  }
+  .comment-avatar-link {
+    width: 32px;
+    height: 32px;
+  }
+  .comment-body {
+    padding: var(--space-xs) var(--space-s);
+  }
+  .comment-author, .comment-text {
+    font-size: 0.875rem;
+  }
+  .comment-time {
+    font-size: 0.7rem;
+  }
+  .reply-context {
+    font-size: 0.8rem;
+  }
+  .comment-input-wrapper {
+    gap: var(--space-xs);
+  }
+  .comment-submit {
+    padding: var(--space-xs) var(--space-s);
+  }
 }
