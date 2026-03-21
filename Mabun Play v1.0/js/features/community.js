@@ -64,11 +64,49 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
+  // ---------- Ensure the current user has a profile (create if missing) ----------
+  async function ensureCurrentUserProfile() {
+    if (!currentUserId) return;
+    const { data: existing, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', currentUserId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error checking profile:', error);
+      return;
+    }
+    if (!existing) {
+      // Get user email from auth
+      const { data: { user } } = await supabase.auth.getUser();
+      const username = user.email ? user.email.split('@')[0] : `user_${currentUserId.slice(0, 8)}`;
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: currentUserId,
+          username,
+          email: user.email,
+          phone: null,
+          provider: null,
+          avatar_url: null,
+          winnings: 0,
+          played: 0,
+          rank: 0,
+          wallet_balance: 0,
+        });
+      if (insertError) console.error('Failed to create profile:', insertError);
+      else console.log('Created missing profile for current user');
+    }
+  }
+
   // ---------- Authentication & User Data ----------
   async function getCurrentUser() {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return null;
     currentUserId = user.id;
+    await ensureCurrentUserProfile(); // ensure profile exists
+    await getCurrentUserProfile();   // fetch it
     return user;
   }
 
@@ -102,15 +140,20 @@ document.addEventListener('DOMContentLoaded', () => {
     return data.map(f => f.following_id);
   }
 
-  async function checkIfUserLiked(postId) {
-    if (!currentUserId) return false;
+  // ---------- Fetch Profiles for a list of user IDs ----------
+  async function fetchProfiles(userIds) {
+    if (!userIds.length) return {};
     const { data, error } = await supabase
-      .from('likes')
-      .select('id')
-      .eq('post_id', postId)
-      .eq('user_id', currentUserId)
-      .maybeSingle();
-    return !!data;
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', userIds);
+    if (error) {
+      console.error('Error fetching profiles:', error);
+      return {};
+    }
+    const map = {};
+    data.forEach(p => { map[p.id] = p; });
+    return map;
   }
 
   // ---------- Load Posts ----------
@@ -152,14 +195,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (posts.length === 0 && pageNum === 1) {
         elements.postsFeed.innerHTML = '<div class="empty-state">No posts yet. Be the first!</div>';
       } else {
-        // Fetch profiles for all users in one go
+        // Fetch profiles for all users in posts
         const userIds = [...new Set(posts.map(p => p.user_id))];
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .in('id', userIds);
-        const profileMap = {};
-        profiles.forEach(p => { profileMap[p.id] = p; });
+        const profileMap = await fetchProfiles(userIds);
 
         // Check likes for current user
         const likedMap = {};
@@ -260,7 +298,6 @@ document.addEventListener('DOMContentLoaded', () => {
           likeBtn.querySelector('span').textContent = likeCount + 1;
           likeBtn.querySelector('iconify-icon').setAttribute('icon', 'solar:heart-bold');
         }
-        // Update count in post object (optional)
       } catch (error) {
         console.error('Like failed:', error);
       }
@@ -339,12 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Fetch profiles for all comment authors
       const userIds = [...new Set(comments.map(c => c.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .in('id', userIds);
-      const profileMap = {};
-      profiles.forEach(p => { profileMap[p.id] = p; });
+      const profileMap = await fetchProfiles(userIds);
 
       // Build comment tree
       const commentMap = {};
@@ -418,9 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             input.value = '';
             container.style.display = 'none';
-            // Reload comments to show the new reply
             await loadComments(postId);
-            // Update comment count on the post
             const commentToggle = document.querySelector(`.post-card[data-post-id="${postId}"] .comment-toggle span`);
             if (commentToggle) {
               commentToggle.textContent = parseInt(commentToggle.textContent) + 1;
@@ -542,12 +572,11 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.createPostBtn.disabled = true;
       const newPost = await createPost(content, selectedImageFile);
       const profile = await getCurrentUserProfile();
-      if (!profile) throw new Error('Could not fetch profile');
       const postWithProfile = {
         ...newPost,
         profiles: {
-          username: profile.username,
-          avatar_url: profile.avatar_url,
+          username: profile ? profile.username : 'Unknown',
+          avatar_url: profile ? profile.avatar_url : null,
         },
         likes_count: 0,
         comments_count: 0,
@@ -575,7 +604,8 @@ document.addEventListener('DOMContentLoaded', () => {
   (async function init() {
     const user = await getCurrentUser();
     if (user) {
-      await getCurrentUserProfile(); // sets avatar
+      // Ensure profile exists (already done in getCurrentUser)
+      await getCurrentUserProfile();
     }
     await loadPosts(currentFeed, 1);
   })();
