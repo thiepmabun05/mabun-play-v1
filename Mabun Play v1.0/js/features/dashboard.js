@@ -5,6 +5,8 @@ import { formatCurrency } from '../utils/formatters.js';
 // DOM elements
 const elements = {
   walletAmount: document.getElementById('wallet-amount'),
+  coinBalance: document.getElementById('coin-balance'),          // coin badge
+  statCoins: document.getElementById('stat-coins-value'),       // coins in stats
   userName: document.getElementById('user-name'),
   liveTimer: document.getElementById('live-timer'),
   nextQuizTimer: document.getElementById('next-quiz-timer'),
@@ -27,17 +29,15 @@ const elements = {
 };
 
 let state = {
-  user: { name: 'User', wallet: 0, played: 0, winnings: 0, rank: 0 },
+  user: { name: 'User', wallet: 0, coins: 0, played: 0, winnings: 0, rank: 0 },
   liveQuiz: { id: null, title: 'General Knowledge', prizePool: 0, currentQuizEndsAt: null, nextQuizStartsAt: null, hasPaid: false, canJoin: false, canPay: false },
   dailyChallenge: { prizePool: 0, payoutTime: null, hasEntered: false },
   weeklyChallenge: { prizePool: 0, endsAt: null, payoutTime: null, hasEntered: false },
   autoSubscribe: false,
 };
 
-// Subscriptions (to be stored for cleanup)
 let quizSubscription = null;
 
-// Helper toast
 function showToast(title, message, icon = 'success') {
   Swal.fire({
     toast: true,
@@ -63,10 +63,9 @@ async function fetchDashboard() {
     if (userError) throw userError;
     if (!user) throw new Error('Not authenticated');
 
-    // Profile uses 'id' column
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('username, winnings, played, rank, wallet_balance')
+      .select('username, winnings, played, rank, wallet_balance, coins_balance')
       .eq('id', user.id)
       .single();
 
@@ -84,6 +83,7 @@ async function fetchDashboard() {
     state.user.played = profile.played || 0;
     state.user.rank = profile.rank || 0;
     state.user.wallet = profile.wallet_balance || 0;
+    state.user.coins = profile.coins_balance || 15000;   // default 15000
 
     // Live quiz (hourly)
     const { data: liveQuiz, error: liveError } = await supabase
@@ -169,7 +169,6 @@ async function fetchDashboard() {
     renderAll();
     updateTimers();
 
-    // Subscribe to live quiz updates
     if (state.liveQuiz.id) {
       if (quizSubscription) quizSubscription.unsubscribe();
       quizSubscription = supabase
@@ -183,7 +182,6 @@ async function fetchDashboard() {
             filter: `id=eq.${state.liveQuiz.id}`,
           },
           (payload) => {
-            // Update prize pool, timers, and participant count
             if (payload.new.prize_pool !== undefined) state.liveQuiz.prizePool = payload.new.prize_pool;
             if (payload.new.current_quiz_ends_at !== undefined) state.liveQuiz.currentQuizEndsAt = payload.new.current_quiz_ends_at;
             if (payload.new.next_quiz_starts_at !== undefined) state.liveQuiz.nextQuizStartsAt = payload.new.next_quiz_starts_at;
@@ -211,6 +209,8 @@ function renderAll() {
 
 function renderUser() {
   if (elements.walletAmount) elements.walletAmount.textContent = state.user.wallet.toFixed(2);
+  if (elements.coinBalance) elements.coinBalance.textContent = state.user.coins;
+  if (elements.statCoins) elements.statCoins.textContent = state.user.coins;
   if (elements.userName) elements.userName.textContent = state.user.name;
   if (elements.statPlayed) elements.statPlayed.textContent = state.user.played;
   if (elements.statWinnings) elements.statWinnings.textContent = formatCurrency(state.user.winnings, true);
@@ -220,8 +220,7 @@ function renderUser() {
 function renderLiveQuiz() {
   if (elements.liveQuizTitle) elements.liveQuizTitle.textContent = state.liveQuiz.title;
   if (elements.hourlyPrize) elements.hourlyPrize.textContent = formatCurrency(state.liveQuiz.prizePool);
-  if (elements.payBtn) elements.payBtn.textContent = 'Free Entry';
-  // Optional: display participant count somewhere
+  if (elements.payBtn) elements.payBtn.textContent = `Use 100 Coins`;
 }
 
 function renderDaily() {
@@ -300,7 +299,7 @@ async function handlePayEntry() {
   state.liveQuiz.canJoin = true;
   renderLiveQuiz();
   updateButtonStates();
-  showToast('Free Entry', 'You can now join the quiz for free!', 'success');
+  showToast('Entry Fee Waived', 'You have used 100 coins to unlock this quiz.', 'success');
 }
 
 async function handleJoinQuiz() {
@@ -321,11 +320,23 @@ async function handleJoinQuiz() {
     if (error) throw error;
     if (data.error) throw new Error(data.error);
 
+    // Update local coin balance
+    state.user.coins = data.new_balance;
+    renderUser();
+
     const session = data.session;
     window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${session.id}`;
   } catch (err) {
     console.error(err);
-    await showModal({ title: 'Join Failed', message: err.message || 'Could not join quiz.', confirmText: 'OK' });
+    if (err.message === 'Insufficient coins') {
+      await showModal({
+        title: 'Insufficient Coins',
+        message: 'You need more Mabun coins to join this quiz. Complete more quizzes to earn coins.',
+        confirmText: 'OK'
+      });
+    } else {
+      await showModal({ title: 'Join Failed', message: err.message || 'Could not join quiz.', confirmText: 'OK' });
+    }
   }
 }
 
@@ -343,14 +354,16 @@ async function handleChallengeEntry(e) {
     btn.disabled = true;
     const supabase = window.supabaseClient;
     const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase
-      .from('challenge_entries')
-      .insert({
-        challenge_type: challenge,
-        user_id: user.id,
-        entered_at: new Date().toISOString(),
-      });
+    const { data, error } = await supabase.rpc('enter_challenge', {
+      p_challenge_type: challenge,
+      p_user_id: user.id
+    });
     if (error) throw error;
+    if (data.error) throw new Error(data.error);
+
+    // Update local coin balance
+    state.user.coins = data.new_balance;
+    renderUser();
 
     if (challenge === 'daily') state.dailyChallenge.hasEntered = true;
     else state.weeklyChallenge.hasEntered = true;
@@ -358,11 +371,19 @@ async function handleChallengeEntry(e) {
     showToast('Success', `You have entered the ${challenge} challenge!`, 'success');
   } catch (err) {
     console.error(err);
-    await showModal({
-      title: 'Entry Failed',
-      message: err?.message || 'Could not enter challenge.',
-      confirmText: 'OK'
-    });
+    if (err.message === 'Insufficient coins') {
+      await showModal({
+        title: 'Insufficient Coins',
+        message: 'You need more Mabun coins to enter this challenge.',
+        confirmText: 'OK'
+      });
+    } else {
+      await showModal({
+        title: 'Entry Failed',
+        message: err?.message || 'Could not enter challenge.',
+        confirmText: 'OK'
+      });
+    }
   } finally {
     btn.disabled = false;
   }
