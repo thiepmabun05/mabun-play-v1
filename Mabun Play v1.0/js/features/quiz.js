@@ -181,12 +181,14 @@ async function submitAnswer(optionId) {
     const supabase = window.supabaseClient;
     if (!supabase) throw new Error('Supabase client not available');
 
+    // UPDATED RPC call to match new function parameter names
     const { data: result, error } = await supabase.rpc('submit_answer', {
-      session_id: sessionId,
-      question_id: currentQuestion.id,
-      option_id: optionId,
-      time_remaining: timeLeft,
+      p_session_id: sessionId,
+      p_question_id: currentQuestion.id,
+      p_option_id: optionId,
+      p_time_remaining: timeLeft,
     });
+
     if (error) throw error;
 
     if (elements.scoreValue) elements.scoreValue.textContent = result.newScore;
