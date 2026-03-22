@@ -1,4 +1,4 @@
-import { supabase } from '../core/supabase.js';
+const supabase = window.supabaseClient;
 
 document.addEventListener('DOMContentLoaded', async () => {
   const mtnPhoneEl = document.getElementById('mtnPhone');
