@@ -102,3 +102,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       .replace(/'/g, '&#39;');
   }
 });
+
+async function updateUnreadCount() {
+  const supabase = window.supabaseClient;
+  if (!supabase) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('read', false);
+  if (!error) {
+    const dot = document.querySelector('.notification-dot');
+    if (dot) dot.style.display = count > 0 ? 'block' : 'none';
+  }
+}
+
+// Call on notifications page load
+updateUnreadCount();
+// Also call after marking a notification read (in the click handler)
