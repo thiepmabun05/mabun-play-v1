@@ -53,21 +53,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     submitBtn.innerHTML = '<span class="loader"></span> Saving...';
 
     try {
-      const { error: insertError } = await supabase
+      // Use upsert to update existing profile or insert new one
+      const { error: upsertError } = await supabase
         .from('profiles')
-        .insert({
+        .upsert({
           id: user.id,
           username,
           email: user.email,
           phone: pendingData.phone,
           provider,
-          created_at: new Date().toISOString(),
           wallet_balance: 0,
           winnings: 0,
           played: 0,
           rank: 0,
-        });
-      if (insertError) throw insertError;
+        }, { onConflict: 'id' });
+
+      if (upsertError) throw upsertError;
 
       await supabase.auth.updateUser({ data: { username } });
       sessionStorage.removeItem('pending_registration');
