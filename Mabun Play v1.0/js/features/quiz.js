@@ -20,17 +20,16 @@ const elements = {
 let quizId = null;
 let sessionId = null;
 
-// Quiz metadata
-let quizStartTime = null;      // JS timestamp (ms)
+let quizStartTime = null;
 let quizEndTime = null;
-let questionTimeSec = 10;      // seconds per question
+let questionTimeSec = 10;
 let totalQuestions = 0;
 
-let currentIndex = -1;         // 0‑based
+let currentIndex = -1;
 let lastDisplayedIndex = -1;
-let answerSubmitted = false;    // for the current question
+let answerSubmitted = false;
 let timerInterval = null;
-let questions = [];             // array of question objects
+let questions = [];
 
 function getUrlParams() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -52,7 +51,7 @@ function stopTimer() {
 
 function updateTimerDisplay(remainingSecs) {
   if (!elements.timerText) return;
-  elements.timerText.textContent = remainingSecs;
+  elements.timerText.textContent = Math.floor(remainingSecs);
 
   if (elements.timerProgress && questionTimeSec > 0) {
     const circumference = 2 * Math.PI * 18;
@@ -73,7 +72,6 @@ function renderQuestion(index) {
   const q = questions[index];
   if (!q) return;
 
-  // Update difficulty stars
   if (elements.difficultyStars) {
     const stars = q.difficulty === 'easy' ? 1 : q.difficulty === 'medium' ? 2 : 3;
     elements.difficultyStars.innerHTML = '';
@@ -103,7 +101,6 @@ function renderQuestion(index) {
     });
   }
 
-  // Update question counter
   if (elements.questionCounter) {
     elements.questionCounter.textContent = `${index + 1}/${totalQuestions}`;
   }
@@ -139,11 +136,14 @@ async function submitAnswer(optionId) {
   answerSubmitted = true;
 
   const remainingSecs = getRemainingSecs();
+  // Floor to avoid floating point errors (RPC expects integer)
+  const integerRemaining = Math.floor(remainingSecs);
+
   const { data, error } = await window.supabaseClient.rpc('submit_answer_sync', {
     p_session_id: sessionId,
     p_question_index: currentIndex,
     p_option_id: optionId,
-    p_time_remaining: remainingSecs,
+    p_time_remaining: integerRemaining,
   });
 
   if (error) {
@@ -160,7 +160,6 @@ async function submitAnswer(optionId) {
   if (elements.scoreValue) elements.scoreValue.textContent = data.newScore;
   if (elements.streakCount) elements.streakCount.textContent = data.newStreak;
 
-  // Highlight correct/incorrect on buttons
   if (data.correctOptionId) {
     elements.optionBtns.forEach(btn => {
       if (btn.dataset.optionId === data.correctOptionId) {
@@ -172,7 +171,6 @@ async function submitAnswer(optionId) {
     });
   }
 
-  // Disable further clicks for this question
   elements.optionBtns.forEach(btn => (btn.disabled = true));
 }
 
@@ -194,7 +192,6 @@ async function loadQuiz() {
     return;
   }
 
-  // 1. Get quiz metadata
   const { data: quizMeta, error: metaError } = await supabase
     .from('quizzes')
     .select('starts_at, ends_at, question_time, total_questions, title')
@@ -212,7 +209,6 @@ async function loadQuiz() {
   totalQuestions = quizMeta.total_questions;
   if (elements.quizTitle) elements.quizTitle.textContent = quizMeta.title;
 
-  // 2. Preload all questions
   const { data: qs, error: qError } = await supabase.rpc('get_quiz_questions', { quiz_id: quizId });
   if (qError || !qs || qs.length === 0) {
     console.error('Failed to load questions:', qError);
@@ -222,10 +218,7 @@ async function loadQuiz() {
   }
   questions = qs;
 
-  // 3. Start timer loop
   startLoop();
-
-  // 4. Attach event listeners
   attachEvents();
 }
 
@@ -237,7 +230,6 @@ function startLoop() {
 
     const now = Date.now();
     if (now < quizStartTime) {
-      // Show countdown to start
       const diffSec = Math.max(0, (quizStartTime - now) / 1000);
       const mins = Math.floor(diffSec / 60);
       const secs = Math.floor(diffSec % 60);
@@ -252,14 +244,11 @@ function startLoop() {
     const newIndex = getCurrentIndex();
     const remainingSecs = getRemainingSecs();
 
-    // Update timer display
-    updateTimerDisplay(Math.floor(remainingSecs));
+    updateTimerDisplay(remainingSecs);
 
-    // If the question index changed, reset answerSubmitted and render new question
     if (newIndex !== currentIndex) {
       currentIndex = newIndex;
       answerSubmitted = false;
-      // Reset button states
       elements.optionBtns.forEach(btn => {
         btn.disabled = false;
         btn.classList.remove('correct', 'incorrect', 'selected');
@@ -267,11 +256,10 @@ function startLoop() {
       renderQuestion(currentIndex);
     }
 
-    // Auto‑submit if timer hits 0 and we haven't answered yet
     if (remainingSecs <= 0 && !answerSubmitted && currentIndex >= 0) {
-      submitAnswer(null); // no option selected -> incorrect
+      submitAnswer(null);
     }
-  }, 200); // check every 200ms for smooth timer
+  }, 200);
 }
 
 function attachEvents() {
