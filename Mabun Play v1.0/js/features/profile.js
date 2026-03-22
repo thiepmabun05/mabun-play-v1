@@ -131,11 +131,29 @@ async function fetchFollowStats(userId) {
     const { data, error } = await supabase
       .rpc('get_follow_stats', { user_id: userId });
     if (error) throw error;
-    return { followers: data.followers, following: data.following };
+    // RPC returns an array with one object
+    const stats = data && data[0] ? data[0] : { followers: 0, following: 0 };
+    return { followers: stats.followers, following: stats.following };
   } catch (err) {
     console.error('Error fetching follow stats:', err);
     return { followers: 0, following: 0 };
   }
+}
+
+async function fetchFollowStatus(targetUserId) {
+  if (!currentUser || !targetUserId) return false;
+  const supabase = window.supabaseClient;
+  const { data, error } = await supabase
+    .from('follows')
+    .select('*')
+    .eq('follower_id', currentUser.id)
+    .eq('following_id', targetUserId)
+    .maybeSingle();
+  if (error) {
+    console.error('Error checking follow status:', error);
+    return false;
+  }
+  return !!data;
 }
 
 function renderProfile() {
@@ -185,15 +203,25 @@ function renderProfile() {
     }
   }
 
+  // Fetch stats and update counts
   fetchFollowStats(profileUser.id).then(stats => {
     elements.followersCount.textContent = stats.followers;
     elements.followingCount.textContent = stats.following;
   });
 
+  // Set follow button state if viewing another user
   if (!isOwnProfile && currentUser) {
     elements.followBtn.style.display = 'block';
-    elements.followBtn.textContent = 'Follow';
-    elements.followBtn.className = 'btn btn-outline';
+    fetchFollowStatus(profileUser.id).then(isFollowing => {
+      if (isFollowing) {
+        elements.followBtn.textContent = 'Unfollow';
+        elements.followBtn.className = 'btn btn-primary';
+      } else {
+        elements.followBtn.textContent = 'Follow';
+        elements.followBtn.className = 'btn btn-outline';
+      }
+      elements.followBtn.disabled = false;
+    });
   } else {
     elements.followBtn.style.display = 'none';
   }
@@ -250,11 +278,21 @@ async function handleFollow() {
       if (error) throw error;
     }
 
+    // Update button text and class
     elements.followBtn.textContent = isFollowing ? 'Follow' : 'Unfollow';
     elements.followBtn.className = isFollowing ? 'btn btn-outline' : 'btn btn-primary';
 
+    // Refresh stats and button state
     const stats = await fetchFollowStats(profileUser.id);
     elements.followersCount.textContent = stats.followers;
+
+    // Also update the follow status locally to avoid re‑fetching
+    if (isFollowing) {
+      // Unfollowed: button text "Follow"
+    } else {
+      // Followed: button text "Unfollow"
+    }
+
     showToast('Success', isFollowing ? 'Unfollowed' : 'Following', 'success');
   } catch (err) {
     console.error(err);
@@ -267,10 +305,10 @@ async function handleFollow() {
 async function uploadAvatar(file) {
   const supabase = window.supabaseClient;
   if (!supabase) throw new Error('Supabase client not available');
-  const user = await supabase.auth.getUser();
-  if (!user.data.user) throw new Error('Not authenticated');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
   const fileExt = file.name.split('.').pop();
-  const fileName = `${user.data.user.id}/${Date.now()}.${fileExt}`;
+  const fileName = `${user.id}/${Date.now()}.${fileExt}`;
   const { error: uploadError } = await supabase.storage
     .from('avatars')
     .upload(fileName, file);
@@ -279,7 +317,7 @@ async function uploadAvatar(file) {
   const { error: updateError } = await supabase
     .from('profiles')
     .update({ avatar_url: publicUrl })
-    .eq('id', user.data.user.id);
+    .eq('id', user.id);
   if (updateError) throw updateError;
   // Refresh header avatar
   if (window.updateHeaderAvatar) window.updateHeaderAvatar();
@@ -367,7 +405,17 @@ function setupEditEmail() {
       },
     });
     if (newEmail && newEmail !== profileUser.email) {
-      await updateProfileField('email', newEmail);
+      // Update both profile table and auth user
+      const supabase = window.supabaseClient;
+      if (supabase) {
+        try {
+          const { error: authError } = await supabase.auth.updateUser({ email: newEmail });
+          if (authError) throw authError;
+          await updateProfileField('email', newEmail);
+        } catch (err) {
+          showToast('Error', err.message || 'Could not update email.', 'error');
+        }
+      }
     }
   });
 }
@@ -403,7 +451,17 @@ function setupEditProfile() {
         await updateProfileField('username', formValues.username);
       }
       if (formValues.email !== profileUser.email) {
-        await updateProfileField('email', formValues.email);
+        // Update both profile table and auth user
+        const supabase = window.supabaseClient;
+        if (supabase) {
+          try {
+            const { error: authError } = await supabase.auth.updateUser({ email: formValues.email });
+            if (authError) throw authError;
+            await updateProfileField('email', formValues.email);
+          } catch (err) {
+            showToast('Error', err.message || 'Could not update email.', 'error');
+          }
+        }
       }
     }
   });
