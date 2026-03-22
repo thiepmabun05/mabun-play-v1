@@ -156,6 +156,18 @@ async function fetchFollowStatus(targetUserId) {
   return !!data;
 }
 
+async function fetchUserRank(userId) {
+  const supabase = window.supabaseClient;
+  if (!supabase) return 0;
+  const { data, error } = await supabase
+    .from('user_rankings')
+    .select('rank')
+    .eq('user_id', userId)
+    .single();
+  if (error || !data) return 0;
+  return data.rank;
+}
+
 function renderProfile() {
   if (!profileUser) return;
 
