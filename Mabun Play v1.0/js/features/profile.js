@@ -176,7 +176,9 @@ function renderProfile() {
   elements.avatarImg.src = profileUser.avatar_url || '/assets/images/default-avatar.png';
   elements.statWinnings.textContent = formatCurrency(profileUser.winnings || 0, true);
   elements.statPlayed.textContent = profileUser.played || 0;
-  elements.statRank.textContent = '#' + (profileUser.rank || 0);
+  fetchUserRank(profileUser.id).then(rank => {
+  elements.statRank.textContent = '#' + rank;
+});
   elements.accountPhone.textContent = profileUser.phone || '—';
   elements.displayUsername.textContent = profileUser.username;
   elements.displayEmail.textContent = profileUser.email || '—';
