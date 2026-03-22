@@ -1,4 +1,4 @@
-import { supabase } from '../core/supabase.js';
+const supabase = window.supabaseClient;
 import { showModal } from '../utils/modal.js';
 import { validatePassword } from '../utils/validation.js';
 
