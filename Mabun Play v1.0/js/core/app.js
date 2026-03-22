@@ -93,3 +93,79 @@ document.addEventListener('DOMContentLoaded', () => {
     if (firstChild) firstChild.style.marginTop = '0';
   }
 });
+
+// Real‑time notifications subscription (after user is logged in)
+let notificationChannel = null;
+
+async function subscribeToNotifications() {
+  const supabase = window.supabaseClient;
+  if (!supabase) return;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  // Unsubscribe from previous channel if any
+  if (notificationChannel) {
+    await supabase.removeChannel(notificationChannel);
+  }
+
+  notificationChannel = supabase
+    .channel(`notifications-${user.id}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      },
+      (payload) => {
+        const notification = payload.new;
+        // Show toast (SweetAlert2 or custom)
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'info',
+          title: notification.title,
+          text: notification.message,
+          showConfirmButton: false,
+          timer: 5000,
+          timerProgressBar: true,
+          didOpen: (toast) => {
+            toast.addEventListener('click', () => {
+              if (notification.link) {
+                window.location.href = notification.link;
+              }
+            });
+          }
+        });
+        // Update notification dot
+        const dot = document.querySelector('.notification-dot');
+        if (dot) dot.style.display = 'block';
+      }
+    )
+    .subscribe();
+}
+
+// Call after auth state change or when page loads
+document.addEventListener('DOMContentLoaded', async () => {
+  // ... existing code ...
+
+  // After setting up auth guard, also subscribe
+  const user = await waitForUser();
+  if (user) subscribeToNotifications();
+});
+
+// Also subscribe when auth state changes (user logs in/out)
+waitForSupabase().then(supabase => {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      subscribeToNotifications();
+    } else if (event === 'SIGNED_OUT') {
+      if (notificationChannel) {
+        supabase.removeChannel(notificationChannel);
+        notificationChannel = null;
+      }
+    }
+  });
+});
