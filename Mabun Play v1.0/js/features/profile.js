@@ -550,37 +550,38 @@ async function submitKyc(e) {
   elements.submitKycBtn.innerHTML = '<span class="loader"></span> Submitting...';
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error('Not authenticated');
+
     const fileExt = file.name.split('.').pop();
     const fileName = `kyc/${user.id}/${Date.now()}.${fileExt}`;
     const { error: uploadError } = await supabase.storage
       .from('kyc')
       .upload(fileName, file);
     if (uploadError) throw uploadError;
+
     const { data: { publicUrl } } = supabase.storage.from('kyc').getPublicUrl(fileName);
 
-    const { error: insertError } = await supabase
-      .from('kyc_submissions')
-      .insert({
-        user_id: user.id,
-        full_name: fullName,
-        id_number: idNumber,
-        document_url: publicUrl,
-        status: 'pending',
-        submitted_at: new Date().toISOString(),
-      });
-    if (insertError) throw insertError;
+    const { data, error } = await supabase.rpc('insert_kyc_submission', {
+      p_user_id: user.id,
+      p_full_name: fullName,
+      p_id_number: idNumber,
+      p_document_url: publicUrl
+    });
+
+    if (error) throw error;
+    if (!data.success) throw new Error(data.error || 'Submission failed');
 
     showToast('Success', 'KYC submitted successfully. Awaiting verification.', 'success');
     loadKycStatus();
   } catch (err) {
+    console.error('KYC submission error:', err);
     showToast('Error', err.message || 'Submission failed', 'error');
   } finally {
     elements.submitKycBtn.disabled = false;
     elements.submitKycBtn.innerHTML = 'Submit Verification';
   }
 }
-
 function setupKycPreview() {
   if (elements.idDocument) {
     elements.idDocument.addEventListener('change', (e) => {
