@@ -573,3 +573,201 @@
   cursor: pointer;
   font-size: inherit;
 }
+
+/* ============================================
+   KYC Section Styling
+   ============================================ */
+
+.kyc-section {
+  margin-top: var(--space-xl);
+  padding: var(--space-l);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.kyc-section .section-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  margin-bottom: var(--space-m);
+  color: var(--foreground);
+  position: relative;
+  display: inline-block;
+}
+
+.kyc-section .section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background: var(--primary);
+  border-radius: 3px;
+}
+
+/* Status messages */
+.kyc-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  padding: var(--space-m);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-l);
+  font-weight: var(--font-medium);
+  border: 1px solid transparent;
+}
+
+.kyc-status iconify-icon {
+  font-size: 24px;
+}
+
+.kyc-status.verified {
+  background: rgba(40, 167, 69, 0.1);
+  border-color: rgba(40, 167, 69, 0.3);
+  color: var(--success);
+}
+
+.kyc-status.pending {
+  background: rgba(255, 193, 7, 0.1);
+  border-color: rgba(255, 193, 7, 0.3);
+  color: var(--warning);
+}
+
+.kyc-status.rejected {
+  background: rgba(220, 53, 69, 0.1);
+  border-color: rgba(220, 53, 69, 0.3);
+  color: var(--destructive);
+}
+
+/* KYC Form */
+.kyc-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-l);
+}
+
+.kyc-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.kyc-form .form-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--foreground);
+  margin-left: var(--space-xs);
+  letter-spacing: 0.3px;
+}
+
+.kyc-form .input-field {
+  width: 100%;
+  padding: var(--space-m);
+  background: var(--background);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  color: var(--foreground);
+  transition: all 0.2s;
+  outline: none;
+}
+
+.kyc-form .input-field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(104, 0, 128, 0.1);
+}
+
+.kyc-form .input-field::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.6;
+}
+
+/* File input styling */
+.kyc-form input[type="file"] {
+  padding: var(--space-s);
+  background: var(--background);
+  border: 2px dashed var(--border);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.kyc-form input[type="file"]:hover {
+  background: var(--muted);
+  border-color: var(--primary);
+}
+
+/* Upload preview */
+.upload-preview {
+  margin-top: var(--space-s);
+  max-width: 200px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.upload-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+/* Submit button */
+#submitKycBtn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: var(--space-m) var(--space-l);
+  border-radius: var(--radius-md);
+  font-weight: var(--font-bold);
+  font-size: var(--text-base);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  box-shadow: 0 4px 12px rgba(104, 0, 128, 0.3);
+}
+
+#submitKycBtn:hover:not(:disabled) {
+  background: var(--primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(104, 0, 128, 0.4);
+}
+
+#submitKycBtn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(104, 0, 128, 0.3);
+}
+
+#submitKycBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--muted-foreground);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .kyc-section {
+    padding: var(--space-m);
+  }
+
+  .kyc-form .input-field {
+    padding: var(--space-s);
+    font-size: var(--text-sm);
+  }
+
+  .upload-preview {
+    max-width: 150px;
+  }
+
+  #submitKycBtn {
+    padding: var(--space-s) var(--space-m);
+    font-size: var(--text-sm);
+  }
+}
