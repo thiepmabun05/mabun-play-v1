@@ -1,3 +1,4 @@
+const supabase = window.supabaseClient;
 import { showModal } from '../utils/modal.js';
 import { formatCurrency } from '../utils/formatters.js';
 import config from '../core/config.js';
