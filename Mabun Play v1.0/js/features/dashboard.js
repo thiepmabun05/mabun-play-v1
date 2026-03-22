@@ -21,8 +21,7 @@ const elements = {
   statPlayed: document.getElementById('stat-played-value'),
   statWinnings: document.getElementById('stat-winnings-value'),
   statRank: document.getElementById('stat-rank-value'),
-  payBtn: document.getElementById('pay-entry-fee'),
-  joinBtn: document.getElementById('join-hourly-quiz'),
+  joinBtn: document.getElementById('join-hourly-quiz'),   // renamed from payBtn
   dailyChallengeBtn: document.querySelector('.js-challenge-entry[data-challenge="daily"]'),
   weeklyChallengeBtn: document.querySelector('.js-challenge-entry[data-challenge="weekly"]'),
   subscribeBtn: document.getElementById('subscribe-btn'),
@@ -30,13 +29,14 @@ const elements = {
 
 let state = {
   user: { name: 'User', wallet: 0, coins: 0, played: 0, winnings: 0, rank: 0 },
-  liveQuiz: { id: null, title: 'General Knowledge', prizePool: 0, currentQuizEndsAt: null, nextQuizStartsAt: null, hasPaid: false, canJoin: false, canPay: false },
+  liveQuiz: { id: null, title: 'No active quiz', prizePool: 0, endsAt: null, canJoin: false, hasPaid: false },
   dailyChallenge: { prizePool: 0, payoutTime: null, hasEntered: false },
   weeklyChallenge: { prizePool: 0, endsAt: null, payoutTime: null, hasEntered: false },
   autoSubscribe: false,
 };
 
 let quizSubscription = null;
+let timerInterval = null;
 
 function showToast(title, message, icon = 'success') {
   Swal.fire({
@@ -63,7 +63,7 @@ async function fetchDashboard() {
     if (userError) throw userError;
     if (!user) throw new Error('Not authenticated');
 
-    // Fetch profile (includes coins)
+    // Fetch profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('username, winnings, played, rank, wallet_balance, coins_balance')
@@ -87,47 +87,59 @@ async function fetchDashboard() {
     state.user.coins = profile.coins_balance || 15000;
 
     // ----- Live Hourly Quiz -----
-    const { data: liveQuiz, error: liveError } = await supabase
+    const now = new Date().toISOString();
+    const { data: activeQuiz, error: quizError } = await supabase
       .from('quizzes')
-      .select('id, title, prize_pool, current_quiz_ends_at, next_quiz_starts_at, status, participant_count')
+      .select('id, title, prize_pool, starts_at, ends_at')
       .eq('type', 'hourly')
       .eq('status', 'active')
-      .order('created_at', { ascending: false })
+      .lte('starts_at', now)
+      .gte('ends_at', now)
+      .order('starts_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (liveError) throw liveError;
+    if (quizError) throw quizError;
 
-    if (liveQuiz && liveQuiz.id) {
+    if (activeQuiz) {
+      // Check if user already joined
+      const { data: session } = await supabase
+        .from('quiz_sessions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('quiz_id', activeQuiz.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
       state.liveQuiz = {
-        id: liveQuiz.id,
-        title: liveQuiz.title,
-        prizePool: liveQuiz.prize_pool,
-        currentQuizEndsAt: liveQuiz.current_quiz_ends_at,
-        nextQuizStartsAt: liveQuiz.next_quiz_starts_at,
-        canPay: true,
+        id: activeQuiz.id,
+        title: activeQuiz.title,
+        prizePool: activeQuiz.prize_pool,
+        endsAt: activeQuiz.ends_at,
         canJoin: true,
-        hasPaid: false,
-        participantCount: liveQuiz.participant_count,
+        hasPaid: !!session,
       };
+      if (session) state.liveQuiz.canJoin = false; // already joined
     } else {
-      // No active quiz – disable joining
       state.liveQuiz = {
         id: null,
         title: 'No active quiz',
         prizePool: 0,
-        currentQuizEndsAt: null,
-        nextQuizStartsAt: null,
-        canPay: false,
+        endsAt: null,
         canJoin: false,
         hasPaid: false,
-        participantCount: 0,
       };
-      if (elements.liveQuizTitle) elements.liveQuizTitle.textContent = 'No active quiz';
-      if (elements.hourlyPrize) elements.hourlyPrize.textContent = '0 Coins';
-      if (elements.payBtn) elements.payBtn.disabled = true;
-      if (elements.joinBtn) elements.joinBtn.disabled = true;
     }
+
+    // ----- Next Quiz Countdown -----
+    const { data: nextQuiz } = await supabase
+      .from('quizzes')
+      .select('starts_at')
+      .eq('type', 'hourly')
+      .gt('starts_at', now)
+      .order('starts_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
 
     // ----- Daily Challenge -----
     const { data: daily, error: dailyError } = await supabase
@@ -180,9 +192,9 @@ async function fetchDashboard() {
     if (sub) state.autoSubscribe = true;
 
     renderAll();
-    updateTimers();
+    startTimers(nextQuiz?.starts_at);
 
-    // Subscribe to live quiz updates (only if we have a quiz)
+    // Subscribe to real‑time updates for the active quiz (if any)
     if (state.liveQuiz.id) {
       if (quizSubscription) quizSubscription.unsubscribe();
       quizSubscription = supabase
@@ -197,11 +209,8 @@ async function fetchDashboard() {
           },
           (payload) => {
             if (payload.new.prize_pool !== undefined) state.liveQuiz.prizePool = payload.new.prize_pool;
-            if (payload.new.current_quiz_ends_at !== undefined) state.liveQuiz.currentQuizEndsAt = payload.new.current_quiz_ends_at;
-            if (payload.new.next_quiz_starts_at !== undefined) state.liveQuiz.nextQuizStartsAt = payload.new.next_quiz_starts_at;
-            if (payload.new.participant_count !== undefined) state.liveQuiz.participantCount = payload.new.participant_count;
+            if (payload.new.ends_at !== undefined) state.liveQuiz.endsAt = payload.new.ends_at;
             renderLiveQuiz();
-            updateTimers();
           }
         )
         .subscribe();
@@ -234,13 +243,13 @@ function renderUser() {
 function renderLiveQuiz() {
   if (elements.liveQuizTitle) elements.liveQuizTitle.textContent = state.liveQuiz.title;
   if (elements.hourlyPrize) elements.hourlyPrize.textContent = `${state.liveQuiz.prizePool.toLocaleString()} Coins`;
-  if (elements.payBtn) {
+  if (elements.joinBtn) {
     if (state.liveQuiz.hasPaid) {
-      elements.payBtn.textContent = 'Paid';
-      elements.payBtn.disabled = true;
+      elements.joinBtn.textContent = 'Already Joined';
+      elements.joinBtn.disabled = true;
     } else {
-      elements.payBtn.textContent = 'Use 100 Coins';
-      elements.payBtn.disabled = !state.liveQuiz.canPay;
+      elements.joinBtn.textContent = 'Join Now (100 Coins)';
+      elements.joinBtn.disabled = !state.liveQuiz.canJoin;
     }
   }
 }
@@ -262,72 +271,73 @@ function renderSubscribeButton() {
   elements.subscribeBtn.disabled = state.autoSubscribe;
 }
 
-function updateTimers() {
-  const now = Date.now();
-  if (elements.liveTimer && state.liveQuiz.currentQuizEndsAt) {
-    const endTime = new Date(state.liveQuiz.currentQuizEndsAt).getTime();
-    const diff = Math.max(0, endTime - now);
-    const mins = Math.floor(diff / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    elements.liveTimer.textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-  } else if (elements.liveTimer) elements.liveTimer.textContent = '00:00';
-
-  if (elements.nextQuizTimer && state.liveQuiz.nextQuizStartsAt) {
-    const startTime = new Date(state.liveQuiz.nextQuizStartsAt).getTime();
-    const diff = Math.max(0, startTime - now);
-    const mins = Math.floor(diff / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    elements.nextQuizTimer.textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-  }
-
-  if (elements.dailyPayoutCountdown && state.dailyChallenge.payoutTime) {
-    const payoutTime = new Date(state.dailyChallenge.payoutTime).getTime();
-    const diff = Math.max(0, payoutTime - now);
-    const hours = Math.floor(diff / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    elements.dailyPayoutCountdown.textContent = `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-  }
-
-  if (elements.weeklyCountdown && state.weeklyChallenge.endsAt) {
-    const endsAt = new Date(state.weeklyChallenge.endsAt).getTime();
-    const diff = Math.max(0, endsAt - now);
-    const days = Math.floor(diff / 86400000);
-    const hours = Math.floor((diff % 86400000) / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    elements.weeklyCountdown.textContent = `${days}d ${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-  }
-
-  if (elements.weeklyPayoutCountdown && state.weeklyChallenge.payoutTime) {
-    const payoutTime = new Date(state.weeklyChallenge.payoutTime).getTime();
-    const diff = Math.max(0, payoutTime - now);
-    const hours = Math.floor(diff / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    elements.weeklyPayoutCountdown.textContent = `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-  }
-}
-
 function updateButtonStates() {
-  if (elements.payBtn) elements.payBtn.disabled = state.liveQuiz.hasPaid || !state.liveQuiz.canPay;
-  if (elements.joinBtn) elements.joinBtn.disabled = !state.liveQuiz.canJoin;
+  if (elements.joinBtn) elements.joinBtn.disabled = !state.liveQuiz.canJoin || state.liveQuiz.hasPaid;
   if (elements.dailyChallengeBtn) elements.dailyChallengeBtn.disabled = state.dailyChallenge.hasEntered;
   if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.disabled = state.weeklyChallenge.hasEntered;
 }
 
-async function handlePayEntry() {
-  if (!state.liveQuiz.canPay) return;
-  state.liveQuiz.hasPaid = true;
-  state.liveQuiz.canJoin = true;
-  renderLiveQuiz();
-  updateButtonStates();
-  showToast('Entry Fee Waived', 'You have used 100 coins to unlock this quiz.', 'success');
+function startTimers(nextQuizStartsAt) {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const now = Date.now();
+
+    // Live quiz remaining time
+    if (state.liveQuiz.endsAt && elements.liveTimer) {
+      const endTime = new Date(state.liveQuiz.endsAt).getTime();
+      const diff = Math.max(0, endTime - now);
+      const mins = Math.floor(diff / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      elements.liveTimer.textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+    } else if (elements.liveTimer) {
+      elements.liveTimer.textContent = '00:00';
+    }
+
+    // Next quiz countdown
+    if (nextQuizStartsAt && elements.nextQuizTimer) {
+      const startTime = new Date(nextQuizStartsAt).getTime();
+      const diff = Math.max(0, startTime - now);
+      const mins = Math.floor(diff / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      elements.nextQuizTimer.textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+    } else if (elements.nextQuizTimer) {
+      elements.nextQuizTimer.textContent = '--:--';
+    }
+
+    // Daily/Weekly payout countdowns (if needed)
+    if (state.dailyChallenge.payoutTime && elements.dailyPayoutCountdown) {
+      const payoutTime = new Date(state.dailyChallenge.payoutTime).getTime();
+      const diff = Math.max(0, payoutTime - now);
+      const hours = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      elements.dailyPayoutCountdown.textContent = `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+    }
+
+    if (state.weeklyChallenge.endsAt && elements.weeklyCountdown) {
+      const endsAt = new Date(state.weeklyChallenge.endsAt).getTime();
+      const diff = Math.max(0, endsAt - now);
+      const days = Math.floor(diff / 86400000);
+      const hours = Math.floor((diff % 86400000) / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      elements.weeklyCountdown.textContent = `${days}d ${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+    }
+
+    if (state.weeklyChallenge.payoutTime && elements.weeklyPayoutCountdown) {
+      const payoutTime = new Date(state.weeklyChallenge.payoutTime).getTime();
+      const diff = Math.max(0, payoutTime - now);
+      const hours = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      elements.weeklyPayoutCountdown.textContent = `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+    }
+  }, 1000);
 }
 
 async function handleJoinQuiz() {
-  if (!state.liveQuiz.canJoin) {
-    await showModal({ title: 'Cannot Join', message: 'Joining is not available at this time.', confirmText: 'OK' });
+  if (!state.liveQuiz.id) {
+    await showModal({ title: 'No Active Quiz', message: 'There is no active quiz at the moment.', confirmText: 'OK' });
     return;
   }
 
@@ -343,23 +353,22 @@ async function handleJoinQuiz() {
     if (error) throw error;
     if (data.error) {
       if (data.error === 'Already joined') {
+        // Resume existing session
         window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${data.session_id}`;
         return;
       }
       throw new Error(data.error);
     }
 
-    state.user.coins = data.new_balance;
-    renderUser();
-
-    const session = data.session;
-    window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${session.id}`;
+    // New session created
+    const sessionId = data.session_id;
+    window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${sessionId}`;
   } catch (err) {
     console.error(err);
     if (err.message === 'Insufficient coins') {
       await showModal({
         title: 'Insufficient Coins',
-        message: 'You need more Mabun coins to join this quiz. Complete more quizzes to earn coins.',
+        message: 'You need more Mabun coins to join this quiz.',
         confirmText: 'OK'
       });
     } else {
@@ -428,8 +437,6 @@ async function handleSubscribe() {
 
 function init() {
   fetchDashboard();
-  setInterval(updateTimers, 1000);
-  if (elements.payBtn) elements.payBtn.addEventListener('click', handlePayEntry);
   if (elements.joinBtn) elements.joinBtn.addEventListener('click', handleJoinQuiz);
   if (elements.dailyChallengeBtn) elements.dailyChallengeBtn.addEventListener('click', handleChallengeEntry);
   if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.addEventListener('click', handleChallengeEntry);
