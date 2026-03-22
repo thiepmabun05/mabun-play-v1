@@ -627,3 +627,17 @@ document.addEventListener('DOMContentLoaded', () => {
     await loadPosts(currentFeed, 1);
   })();
 });
+
+const urlParams = new URLSearchParams(window.location.search);
+const postId = urlParams.get('postId');
+if (postId) {
+  // Wait for posts to load, then scroll and highlight
+  // For simplicity, we can just scroll to the post after a short delay
+  setTimeout(() => {
+    const postElement = document.querySelector(`.post-card[data-post-id="${postId}"]`);
+    if (postElement) {
+      postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      postElement.style.border = '2px solid var(--primary)';
+    }
+  }, 1000);
+}
