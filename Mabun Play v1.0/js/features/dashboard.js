@@ -21,7 +21,7 @@ const elements = {
   statPlayed: document.getElementById('stat-played-value'),
   statWinnings: document.getElementById('stat-winnings-value'),
   statRank: document.getElementById('stat-rank-value'),
-  joinBtn: document.getElementById('join-hourly-quiz'),   // renamed from payBtn
+  joinBtn: document.getElementById('join-hourly-quiz'),
   dailyChallengeBtn: document.querySelector('.js-challenge-entry[data-challenge="daily"]'),
   weeklyChallengeBtn: document.querySelector('.js-challenge-entry[data-challenge="weekly"]'),
   subscribeBtn: document.getElementById('subscribe-btn'),
@@ -29,7 +29,8 @@ const elements = {
 
 let state = {
   user: { name: 'User', wallet: 0, coins: 0, played: 0, winnings: 0, rank: 0 },
-  liveQuiz: { id: null, title: 'No active quiz', prizePool: 0, endsAt: null, canJoin: false, hasPaid: false },
+  liveQuiz: { id: null, title: 'No active quiz', prizePool: 0, startsAt: null, endsAt: null, canJoin: false, hasPaid: false },
+  nextQuizStartsAt: null,
   dailyChallenge: { prizePool: 0, payoutTime: null, hasEntered: false },
   weeklyChallenge: { prizePool: 0, endsAt: null, payoutTime: null, hasEntered: false },
   autoSubscribe: false,
@@ -86,8 +87,9 @@ async function fetchDashboard() {
     state.user.wallet = profile.wallet_balance || 0;
     state.user.coins = profile.coins_balance || 15000;
 
-    // ----- Live Hourly Quiz -----
     const now = new Date().toISOString();
+
+    // ----- Live Hourly Quiz -----
     const { data: activeQuiz, error: quizError } = await supabase
       .from('quizzes')
       .select('id, title, prize_pool, starts_at, ends_at')
@@ -115,6 +117,7 @@ async function fetchDashboard() {
         id: activeQuiz.id,
         title: activeQuiz.title,
         prizePool: activeQuiz.prize_pool,
+        startsAt: activeQuiz.starts_at,
         endsAt: activeQuiz.ends_at,
         canJoin: true,
         hasPaid: !!session,
@@ -125,6 +128,7 @@ async function fetchDashboard() {
         id: null,
         title: 'No active quiz',
         prizePool: 0,
+        startsAt: null,
         endsAt: null,
         canJoin: false,
         hasPaid: false,
@@ -140,6 +144,8 @@ async function fetchDashboard() {
       .order('starts_at', { ascending: true })
       .limit(1)
       .maybeSingle();
+
+    state.nextQuizStartsAt = nextQuiz ? nextQuiz.starts_at : null;
 
     // ----- Daily Challenge -----
     const { data: daily, error: dailyError } = await supabase
@@ -192,7 +198,7 @@ async function fetchDashboard() {
     if (sub) state.autoSubscribe = true;
 
     renderAll();
-    startTimers(nextQuiz?.starts_at);
+    startTimers();
 
     // Subscribe to real‑time updates for the active quiz (if any)
     if (state.liveQuiz.id) {
@@ -277,7 +283,7 @@ function updateButtonStates() {
   if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.disabled = state.weeklyChallenge.hasEntered;
 }
 
-function startTimers(nextQuizStartsAt) {
+function startTimers() {
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     const now = Date.now();
@@ -294,8 +300,8 @@ function startTimers(nextQuizStartsAt) {
     }
 
     // Next quiz countdown
-    if (nextQuizStartsAt && elements.nextQuizTimer) {
-      const startTime = new Date(nextQuizStartsAt).getTime();
+    if (state.nextQuizStartsAt && elements.nextQuizTimer) {
+      const startTime = new Date(state.nextQuizStartsAt).getTime();
       const diff = Math.max(0, startTime - now);
       const mins = Math.floor(diff / 60000);
       const secs = Math.floor((diff % 60000) / 1000);
@@ -304,7 +310,7 @@ function startTimers(nextQuizStartsAt) {
       elements.nextQuizTimer.textContent = '--:--';
     }
 
-    // Daily/Weekly payout countdowns (if needed)
+    // Daily/Weekly payouts
     if (state.dailyChallenge.payoutTime && elements.dailyPayoutCountdown) {
       const payoutTime = new Date(state.dailyChallenge.payoutTime).getTime();
       const diff = Math.max(0, payoutTime - now);
@@ -346,7 +352,8 @@ async function handleJoinQuiz() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase.rpc('join_quiz', {
+    // Use the synchronous join function
+    const { data, error } = await supabase.rpc('join_live_quiz', {
       p_quiz_id: state.liveQuiz.id,
       p_user_id: user.id
     });
