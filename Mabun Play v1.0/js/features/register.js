@@ -78,13 +78,11 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       if (error) throw error;
 
-      // Store pending registration data in sessionStorage
       sessionStorage.setItem('pending_registration', JSON.stringify({
         phone: '+211' + rawPhone,
         provider: detectProvider(rawPhone) || 'mtn',
       }));
 
-      // Redirect immediately to complete profile page
       window.location.href = 'complete-profile.html';
     } catch (error) {
       console.error('Registration error:', error);
