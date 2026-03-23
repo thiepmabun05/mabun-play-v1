@@ -2,7 +2,7 @@
 import { showModal } from '../utils/modal.js';
 import { throttle } from '../utils/helpers.js';
 
-// ---------- Helper: format time ----------
+// Helper: format time
 function formatTime(dateString) {
   if (!dateString) return 'Just now';
   const date = new Date(dateString);
@@ -23,7 +23,6 @@ function formatTime(dateString) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-// ---------- Helper: escape HTML ----------
 function escapeHtml(str) {
   if (!str) return '';
   return str
@@ -64,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // ---------- Ensure current user has a profile ----------
+  // Ensure current user has a profile
   async function ensureCurrentUserProfile() {
     if (!currentUserId) return;
     const { data: existing, error } = await supabase
@@ -72,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .select('id')
       .eq('id', currentUserId)
       .maybeSingle();
-
     if (error) {
       console.error('Error checking profile:', error);
       return;
@@ -95,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ---------- Authentication & User Data ----------
+  // Authentication & User Data
   async function getCurrentUser() {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return null;
@@ -149,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return map;
   }
 
-  // ---------- Load Posts ----------
+  // Load posts
   async function loadPosts(feed, pageNum) {
     if (loading || !hasMore) return;
     loading = true;
@@ -187,6 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (posts.length === 0 && pageNum === 1) {
         elements.postsFeed.innerHTML = '<div class="empty-state">No posts yet. Be the first!</div>';
+        hasMore = false;
       } else {
         const userIds = [...new Set(posts.map(p => p.user_id))];
         const profileMap = await fetchProfiles(userIds);
@@ -222,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ---------- Create a Post Element ----------
+  // Create a Post Element (with updated like handler using post object state)
   function createPostElement(post) {
     const authorName = post.profiles?.username || 'Unknown';
     const authorAvatar = post.profiles?.avatar_url || '/assets/images/default-avatar.png';
@@ -281,26 +280,30 @@ document.addEventListener('DOMContentLoaded', () => {
       parentUsername: null,
     };
 
-    // Like button
+    // Like button handler (uses post object to maintain state)
     const likeBtn = div.querySelector('.like-btn');
     likeBtn.addEventListener('click', async () => {
       if (!currentUserId) {
         await showModal({ title: 'Login Required', message: 'Please log in to like posts.', confirmText: 'OK' });
         return;
       }
-      const isLiked = userLiked;
+      const isLiked = post.user_liked; // use the post object's property
       try {
         if (isLiked) {
           await supabase.from('likes').delete().eq('post_id', post.id).eq('user_id', currentUserId);
-          likeBtn.querySelector('span').textContent = likeCount - 1;
-          likeBtn.querySelector('iconify-icon').setAttribute('icon', 'solar:heart-linear');
+          post.user_liked = false;
+          post.likes_count = (post.likes_count || 0) - 1;
         } else {
           await supabase.from('likes').insert({ post_id: post.id, user_id: currentUserId });
-          likeBtn.querySelector('span').textContent = likeCount + 1;
-          likeBtn.querySelector('iconify-icon').setAttribute('icon', 'solar:heart-bold');
+          post.user_liked = true;
+          post.likes_count = (post.likes_count || 0) + 1;
         }
+        // Update UI
+        likeBtn.querySelector('span').textContent = post.likes_count;
+        likeBtn.querySelector('iconify-icon').setAttribute('icon', post.user_liked ? 'solar:heart-bold' : 'solar:heart-linear');
       } catch (error) {
         console.error('Like failed:', error);
+        showModal({ title: 'Error', message: 'Could not like post.', confirmText: 'OK' });
       }
     });
 
@@ -319,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Share button
     const shareBtn = div.querySelector('.share-btn');
     shareBtn.addEventListener('click', async () => {
-      const url = `${window.location.origin}/post.html?id=${post.id}`;
+      const url = `${window.location.origin}/community.html?postId=${post.id}`;
       try {
         await navigator.clipboard.writeText(url);
         showModal({ title: 'Link Copied', message: 'Post link copied to clipboard!', confirmText: 'OK' });
@@ -331,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return div;
   }
 
-  // ---------- Load Comments (nested, with CSS class indentation) ----------
+  // Load Comments (nested)
   async function loadComments(postId) {
     try {
       const { data: comments, error } = await supabase
@@ -350,7 +353,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Fetch profiles for all comment authors
       const userIds = [...new Set(comments.map(c => c.user_id))];
       const profileMap = await fetchProfiles(userIds);
 
@@ -374,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // Render recursively with CSS classes for indentation
+      // Render recursively
       function renderComment(comment, level = 0) {
         const indentClass = level > 0 ? `comment-indent-${Math.min(level, 5)}` : '';
         return `
@@ -399,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ---------- Create a New Post ----------
+  // Create a New Post
   async function createPost(content, imageFile) {
     let imageUrl = null;
     if (imageFile) {
@@ -426,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return data;
   }
 
-  // ---------- Global Click Handler for Reply, Cancel, Comment Submit ----------
+  // Global Click Handler for Reply, Cancel, Comment Submit
   elements.postsFeed.addEventListener('click', async (e) => {
     // Reply button clicked
     const replyBtn = e.target.closest('.reply-btn');
@@ -495,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
         input.placeholder = 'Write a comment...';
         // Reload comments for this post
         await loadComments(postDiv.dataset.postId);
-        // Update comment count
+        // Update comment count (optimistic)
         const commentToggle = postDiv.querySelector('.comment-toggle span');
         if (commentToggle) {
           commentToggle.textContent = parseInt(commentToggle.textContent) + 1;
@@ -507,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ---------- Feed Tabs ----------
+  // Feed Tabs
   elements.feedTabs.forEach(tab => {
     tab.addEventListener('click', () => {
       elements.feedTabs.forEach(t => t.classList.remove('active'));
@@ -520,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // ---------- Infinite Scroll ----------
+  // Infinite Scroll
   window.addEventListener('scroll', throttle(() => {
     if (loading || !hasMore) return;
     const scrollY = window.scrollY;
@@ -530,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 200));
 
-  // ---------- Image Upload Handling ----------
+  // Image Upload Handling
   const fileInput = elements.postImageUpload;
   if (elements.uploadImageLabel && fileInput) {
     elements.uploadImageLabel.addEventListener('click', (e) => {
@@ -572,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ---------- Create Post Button ----------
+  // Create Post Button
   elements.createPostBtn.addEventListener('click', async (e) => {
     e.preventDefault();
     if (!currentUserId) {
@@ -613,12 +615,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ---------- Back to Top ----------
+  // Back to Top
   elements.backToTopBtn.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // ---------- Initialization ----------
+  // Initialization
   (async function init() {
     const user = await getCurrentUser();
     if (user) {
@@ -627,17 +629,3 @@ document.addEventListener('DOMContentLoaded', () => {
     await loadPosts(currentFeed, 1);
   })();
 });
-
-const urlParams = new URLSearchParams(window.location.search);
-const postId = urlParams.get('postId');
-if (postId) {
-  // Wait for posts to load, then scroll and highlight
-  // For simplicity, we can just scroll to the post after a short delay
-  setTimeout(() => {
-    const postElement = document.querySelector(`.post-card[data-post-id="${postId}"]`);
-    if (postElement) {
-      postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      postElement.style.border = '2px solid var(--primary)';
-    }
-  }, 1000);
-}
