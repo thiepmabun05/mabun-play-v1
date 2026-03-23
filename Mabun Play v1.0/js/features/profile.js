@@ -124,6 +124,21 @@ async function fetchProfile(userId = null) {
   }
 }
 
+async function fetchUserRank(userId) {
+  const supabase = window.supabaseClient;
+  if (!supabase) return 0;
+  const { data, error } = await supabase
+    .from('user_rankings')
+    .select('rank')
+    .eq('user_id', userId)
+    .single();
+  if (error) {
+    console.error('Error fetching rank:', error);
+    return 0;
+  }
+  return data.rank;
+}
+
 async function fetchFollowStats(userId) {
   const supabase = window.supabaseClient;
   if (!supabase) return { followers: 0, following: 0 };
@@ -131,7 +146,6 @@ async function fetchFollowStats(userId) {
     const { data, error } = await supabase
       .rpc('get_follow_stats', { user_id: userId });
     if (error) throw error;
-    // The function returns an array with one object
     const stats = data && data[0] ? data[0] : { followers: 0, following: 0 };
     return { followers: stats.followers, following: stats.following };
   } catch (err) {
@@ -164,7 +178,12 @@ function renderProfile() {
   elements.avatarImg.src = profileUser.avatar_url || '/assets/images/default-avatar.png';
   elements.statWinnings.textContent = formatCurrency(profileUser.winnings || 0, true);
   elements.statPlayed.textContent = profileUser.played || 0;
-  elements.statRank.textContent = '#' + (profileUser.rank || 0);
+
+  // Fetch dynamic rank from view
+  fetchUserRank(profileUser.id).then(rank => {
+    elements.statRank.textContent = '#' + rank;
+  });
+
   elements.accountPhone.textContent = profileUser.phone || '—';
   elements.displayUsername.textContent = profileUser.username;
   elements.displayEmail.textContent = profileUser.email || '—';
@@ -313,7 +332,6 @@ async function uploadAvatar(file) {
     .update({ avatar_url: publicUrl })
     .eq('id', user.id);
   if (updateError) throw updateError;
-  // Refresh header avatar
   if (window.updateHeaderAvatar) window.updateHeaderAvatar();
   return publicUrl;
 }
@@ -399,7 +417,6 @@ function setupEditEmail() {
       },
     });
     if (newEmail && newEmail !== profileUser.email) {
-      // Update both profile table and auth user
       const supabase = window.supabaseClient;
       if (supabase) {
         try {
@@ -445,7 +462,6 @@ function setupEditProfile() {
         await updateProfileField('username', formValues.username);
       }
       if (formValues.email !== profileUser.email) {
-        // Update both profile table and auth user
         const supabase = window.supabaseClient;
         if (supabase) {
           try {
@@ -611,7 +627,6 @@ function setupResendVerification() {
 }
 
 (async function init() {
-  // Wait for Supabase client
   let retries = 0;
   while (!window.supabaseClient && retries < 20) {
     await new Promise(r => setTimeout(r, 50));
