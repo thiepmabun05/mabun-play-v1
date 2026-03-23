@@ -1,4 +1,4 @@
-// js/features/quiz.js
+// js/features/quiz.js (debug version)
 import { showModal } from '../utils/modal.js';
 
 const elements = {
@@ -134,11 +134,11 @@ function getRemainingSecs() {
 async function submitAnswer(optionId) {
   if (answerSubmitted) return;
   answerSubmitted = true;
+  console.log(`submitAnswer called with optionId=${optionId}`);
 
   const remainingSecs = getRemainingSecs();
   const integerRemaining = Math.floor(remainingSecs);
-
-  console.log(`Submitting answer for index ${currentIndex}, option ${optionId}, remaining ${integerRemaining}`);
+  console.log(`Sending: session=${sessionId}, index=${currentIndex}, option=${optionId}, remaining=${integerRemaining}`);
 
   const { data, error } = await window.supabaseClient.rpc('submit_answer_sync', {
     p_session_id: sessionId,
@@ -152,7 +152,6 @@ async function submitAnswer(optionId) {
     await showModal({ title: 'Error', message: 'Could not submit answer. Please refresh.', confirmText: 'OK' });
     return;
   }
-
   console.log('Submit response:', data);
 
   if (data.finished) {
@@ -179,17 +178,18 @@ async function submitAnswer(optionId) {
 
 function onOptionClick(e) {
   const btn = e.currentTarget;
+  console.log("Option clicked, disabled? " + btn.disabled + ", answerSubmitted=" + answerSubmitted);
   if (btn.disabled || answerSubmitted) return;
   const optionId = btn.dataset.optionId;
   if (!optionId) return;
-
-  console.log('Option clicked:', optionId);
+  console.log("Option clicked:", optionId);
   elements.optionBtns.forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
   submitAnswer(optionId);
 }
 
 async function loadQuiz() {
+  console.log("loadQuiz started");
   const supabase = window.supabaseClient;
   if (!supabase) {
     showModal({ title: 'Error', message: 'Supabase client not loaded.', confirmText: 'OK' });
@@ -221,11 +221,11 @@ async function loadQuiz() {
     .eq('id', sessionId)
     .single();
   if (!sessionError && sessionData) {
+    console.log("Session score:", sessionData.score, "streak:", sessionData.streak);
     if (elements.scoreValue) elements.scoreValue.textContent = sessionData.score;
     if (elements.streakCount) elements.streakCount.textContent = sessionData.streak;
   } else if (sessionError) {
     console.error('Error fetching session:', sessionError);
-    // Continue anyway; scores will start from 0 but they may have already answered some questions
   }
 
   // Preload questions
@@ -238,6 +238,7 @@ async function loadQuiz() {
   }
   questions = qs;
   console.log('Loaded questions:', questions.length);
+  console.log('First question object:', questions[0]); // check for correct_option
 
   // Start the loop
   startLoop();
@@ -245,6 +246,7 @@ async function loadQuiz() {
 }
 
 function startLoop() {
+  console.log("startLoop started");
   if (timerInterval) clearInterval(timerInterval);
 
   timerInterval = setInterval(() => {
@@ -267,15 +269,14 @@ function startLoop() {
 
     const newIndex = getCurrentIndex();
     const remainingSecs = getRemainingSecs();
+    console.log(`Loop: newIndex=${newIndex}, currentIndex=${currentIndex}, remainingSecs=${remainingSecs}, answerSubmitted=${answerSubmitted}`);
 
     updateTimerDisplay(remainingSecs);
 
-    // If the index changed, reset answer state and render new question
     if (newIndex !== currentIndex) {
       console.log(`Question changed to index ${newIndex}`);
       currentIndex = newIndex;
       answerSubmitted = false;
-      // Re‑enable buttons and remove highlights
       elements.optionBtns.forEach(btn => {
         btn.disabled = false;
         btn.classList.remove('correct', 'incorrect', 'selected');
@@ -283,12 +284,11 @@ function startLoop() {
       renderQuestion(currentIndex);
     }
 
-    // Auto‑submit when timer hits 0 and not yet answered
     if (remainingSecs <= 0 && !answerSubmitted && currentIndex >= 0) {
       console.log('Timer expired, auto‑submitting');
       submitAnswer(null);
     }
-  }, 200); // 200ms for smooth timer
+  }, 200);
 }
 
 function attachEvents() {
