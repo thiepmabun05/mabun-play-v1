@@ -14,7 +14,7 @@ window.addEventListener('error', (event) => {
   console.error('Global error:', event.error);
 });
 
-// Function to update header avatar
+// Update header avatar
 async function updateHeaderAvatar() {
   const avatarElement = document.querySelector('.profile-avatar');
   if (!avatarElement) return;
@@ -36,7 +36,6 @@ async function updateHeaderAvatar() {
   }
   avatarElement.innerHTML = `<img src="${profile.avatar_url}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">`;
 }
-
 window.updateHeaderAvatar = updateHeaderAvatar;
 
 // Real‑time notifications subscription
@@ -130,13 +129,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Auth state listener
 waitForSupabase().then(supabase => {
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (session?.user) {
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
       localStorage.setItem('mabun_user', JSON.stringify(session.user));
       localStorage.setItem('mabun_token', session.access_token);
       updateHeaderAvatar();
-      subscribeToNotifications();
-    } else {
+
+      // Check if profile has username
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', session.user.id)
+        .single();
+      const currentPath = window.location.pathname.split('/').pop();
+      if ((!profile || !profile.username) && currentPath !== 'complete-profile.html') {
+        window.location.href = 'complete-profile.html';
+      }
+    } else if (event === 'SIGNED_OUT') {
       localStorage.removeItem('mabun_user');
       localStorage.removeItem('mabun_token');
       updateHeaderAvatar();
