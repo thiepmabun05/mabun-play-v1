@@ -251,8 +251,8 @@ function renderLiveQuiz() {
   if (elements.hourlyPrize) elements.hourlyPrize.textContent = `${state.liveQuiz.prizePool.toLocaleString()} Coins`;
   if (elements.joinBtn) {
     if (state.liveQuiz.hasPaid) {
-      elements.joinBtn.textContent = 'Already Joined';
-      elements.joinBtn.disabled = true;
+      elements.joinBtn.textContent = 'Continue Quiz';
+      elements.joinBtn.disabled = false;
     } else {
       elements.joinBtn.textContent = 'Join Now (100 Coins)';
       elements.joinBtn.disabled = !state.liveQuiz.canJoin;
@@ -278,7 +278,13 @@ function renderSubscribeButton() {
 }
 
 function updateButtonStates() {
-  if (elements.joinBtn) elements.joinBtn.disabled = !state.liveQuiz.canJoin || state.liveQuiz.hasPaid;
+  if (elements.joinBtn) {
+    if (state.liveQuiz.hasPaid) {
+      elements.joinBtn.disabled = false;
+    } else {
+      elements.joinBtn.disabled = !state.liveQuiz.canJoin;
+    }
+  }
   if (elements.dailyChallengeBtn) elements.dailyChallengeBtn.disabled = state.dailyChallenge.hasEntered;
   if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.disabled = state.weeklyChallenge.hasEntered;
 }
@@ -352,7 +358,6 @@ async function handleJoinQuiz() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Use the synchronous join function
     const { data, error } = await supabase.rpc('join_live_quiz', {
       p_quiz_id: state.liveQuiz.id,
       p_user_id: user.id
