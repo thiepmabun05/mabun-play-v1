@@ -214,6 +214,20 @@ async function loadQuiz() {
   totalQuestions = quizMeta.total_questions;
   if (elements.quizTitle) elements.quizTitle.textContent = quizMeta.title;
 
+  // Get current session details (score, streak)
+  const { data: sessionData, error: sessionError } = await supabase
+    .from('quiz_sessions')
+    .select('score, streak')
+    .eq('id', sessionId)
+    .single();
+  if (!sessionError && sessionData) {
+    if (elements.scoreValue) elements.scoreValue.textContent = sessionData.score;
+    if (elements.streakCount) elements.streakCount.textContent = sessionData.streak;
+  } else if (sessionError) {
+    console.error('Error fetching session:', sessionError);
+    // Continue anyway; scores will start from 0 but they may have already answered some questions
+  }
+
   // Preload questions
   const { data: qs, error: qError } = await supabase.rpc('get_quiz_questions', { p_quiz_id: quizId });
   if (qError || !qs || qs.length === 0) {
