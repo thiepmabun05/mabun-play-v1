@@ -53,6 +53,8 @@ function showToast(title, message, icon = 'success') {
 
 async function fetchDashboard() {
   const supabase = window.supabaseClient;
+  // Complete any expired challenges
+await supabase.rpc('complete_expired_challenges');
   if (!supabase) {
     console.error('Supabase client not available');
     showModal({ title: 'Error', message: 'Supabase client not loaded. Please refresh.', confirmText: 'OK' });
