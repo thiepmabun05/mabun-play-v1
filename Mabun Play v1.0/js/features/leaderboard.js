@@ -195,15 +195,35 @@ async function fetchLeaderboard() {
   if (!supabase || !currentData.leaderboardFunc) return;
 
   try {
-    const { data, error } = await supabase.rpc(currentData.leaderboardFunc, {
-      p_quiz_id: currentData.id,
-      p_challenge_id: currentData.id,
-    }[currentData.leaderboardFunc === 'get_active_quiz_leaderboard' ? 'p_quiz_id' : 'p_challenge_id'] = currentData.id);
+    let params = {};
+    if (currentData.leaderboardFunc === 'get_active_quiz_leaderboard') {
+      params = { p_quiz_id: currentData.id };
+    } else if (currentData.leaderboardFunc === 'get_challenge_leaderboard') {
+      params = { p_challenge_id: currentData.id };
+    }
+    const { data, error } = await supabase.rpc(currentData.leaderboardFunc, params);
     if (error) throw error;
     renderLeaderboard(data || []);
   } catch (err) {
     console.error('Error fetching leaderboard:', err);
-    elements.leaderboardList.innerHTML = '<div class="empty-state">Error loading leaderboard</div>';
+    // Fallback to direct query on view for challenges
+    if (currentData.leaderboardFunc === 'get_challenge_leaderboard') {
+      try {
+        const { data: fallback, error: fbError } = await supabase
+          .from('challenge_leaderboard')
+          .select('*')
+          .eq('challenge_id', currentData.id)
+          .order('rank', { ascending: true })
+          .limit(100);
+        if (fbError) throw fbError;
+        renderLeaderboard(fallback || []);
+      } catch (fbErr) {
+        console.error('Fallback failed:', fbErr);
+        elements.leaderboardList.innerHTML = '<div class="empty-state">Error loading leaderboard</div>';
+      }
+    } else {
+      elements.leaderboardList.innerHTML = '<div class="empty-state">Error loading leaderboard</div>';
+    }
   }
 }
 
