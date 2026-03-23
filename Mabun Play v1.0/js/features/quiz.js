@@ -1,5 +1,5 @@
 ```javascript
-// js/features/quiz.js (FIXED VERSION)
+// js/features/quiz.js (FINAL PRODUCTION VERSION)
 import { showModal } from '../utils/modal.js';
 
 const elements = {
@@ -31,19 +31,20 @@ let answerSubmitted = false;
 let timerInterval = null;
 let questions = [];
 
-// ✅ NEW: Prevent instant auto-submit bugs
+// ✅ Timing protection
 let questionLoadTime = 0;
-const MIN_GRACE_MS = 800; // 0.8s protection window
+const MIN_GRACE_MS = 800;
+
+// ✅ Offline queue
+let pendingAnswers = [];
+
+// ✅ Realtime channel
+let realtimeChannel = null;
 
 function getUrlParams() {
   const urlParams = new URLSearchParams(window.location.search);
   quizId = urlParams.get('id');
   sessionId = urlParams.get('session');
-  console.log('Quiz ID:', quizId, 'Session ID:', sessionId);
-}
-
-function setLoading(isLoading) {
-  elements.optionBtns.forEach(btn => (btn.disabled = isLoading));
 }
 
 function stopTimer() {
@@ -55,8 +56,8 @@ function stopTimer() {
 
 function updateTimerDisplay(remainingSecs) {
   if (!elements.timerText) return;
-  const displaySecs = Math.floor(remainingSecs);
-  elements.timerText.textContent = displaySecs;
+
+  elements.timerText.textContent = Math.floor(remainingSecs);
 
   if (elements.timerProgress && questionTimeSec > 0) {
     const circumference = 2 * Math.PI * 18;
@@ -77,6 +78,7 @@ function renderQuestion(index) {
   const q = questions[index];
   if (!q) return;
 
+  // Difficulty stars
   if (elements.difficultyStars) {
     const stars = q.difficulty === 'easy' ? 1 : q.difficulty === 'medium' ? 2 : 3;
     elements.difficultyStars.innerHTML = '';
@@ -88,81 +90,52 @@ function renderQuestion(index) {
     }
   }
 
-  if (elements.questionText) elements.questionText.textContent = q.text;
+  elements.questionText.textContent = q.text;
 
-  if (elements.optionsGrid && q.options) {
-    const letters = ['A', 'B', 'C', 'D'];
-    elements.optionBtns.forEach((btn, i) => {
-      const option = q.options[letters[i]];
-      if (option) {
-        btn.style.display = 'flex';
-        btn.querySelector('.option-letter').textContent = letters[i];
-        btn.querySelector('.option-text').textContent = option;
-        btn.dataset.optionId = letters[i];
-        btn.disabled = false;
-        btn.classList.remove('correct', 'incorrect', 'selected');
-      } else {
-        btn.style.display = 'none';
-      }
-    });
-  }
+  const letters = ['A', 'B', 'C', 'D'];
 
-  if (elements.questionCounter) {
-    elements.questionCounter.textContent = `${index + 1}/${totalQuestions}`;
-  }
-}
+  elements.optionBtns.forEach((btn, i) => {
+    const option = q.options[letters[i]];
 
-function checkQuizEnded() {
-  const now = Date.now();
-  if (now >= quizEndTime) {
-    stopTimer();
-    window.location.href = `results.html?id=${quizId}&session=${sessionId}`;
-    return true;
-  }
-  return false;
+    if (option) {
+      btn.style.display = 'flex';
+      btn.querySelector('.option-letter').textContent = letters[i];
+      btn.querySelector('.option-text').textContent = option;
+      btn.dataset.optionId = letters[i];
+      btn.disabled = false;
+      btn.classList.remove('correct', 'incorrect', 'selected');
+    } else {
+      btn.style.display = 'none';
+    }
+  });
+
+  elements.questionCounter.textContent = `${index + 1}/${totalQuestions}`;
 }
 
 function getCurrentIndex() {
-  const now = Date.now();
-  const elapsedSec = (now - quizStartTime) / 1000;
-  const idx = Math.floor(elapsedSec / questionTimeSec);
-  return Math.min(idx, totalQuestions - 1);
+  const elapsed = (Date.now() - quizStartTime) / 1000;
+  return Math.min(Math.floor(elapsed / questionTimeSec), totalQuestions - 1);
 }
 
-// ✅ FIXED: Prevent negative / zero instant timing bugs
+// ✅ Safer timing
 function getRemainingSecs() {
-  const now = Date.now();
-  const elapsedSec = (now - quizStartTime) / 1000;
-  const questionStartOffset = currentIndex * questionTimeSec;
-  const questionElapsed = elapsedSec - questionStartOffset;
+  const elapsed = (Date.now() - quizStartTime) / 1000;
+  const questionStart = currentIndex * questionTimeSec;
+  const questionElapsed = elapsed - questionStart;
 
   return Math.max(0.5, questionTimeSec - questionElapsed);
 }
 
-async function submitAnswer(optionId) {
-  if (answerSubmitted) return;
-  answerSubmitted = true;
+// ✅ Response handler (centralized)
+function handleAnswerResponse(data, optionId) {
+  if (data.error) {
+    console.warn("Server rejected:", data);
 
-  const remainingSecs = getRemainingSecs();
-  const integerRemaining = Math.floor(remainingSecs);
-
-  console.log("RPC payload:", {
-    sessionId,
-    currentIndex,
-    optionId,
-    integerRemaining
-  });
-
-  const { data, error } = await window.supabaseClient.rpc('submit_answer_sync', {
-    p_session_id: sessionId,
-    p_question_index: currentIndex,
-    p_option_id: optionId,
-    p_time_remaining: integerRemaining,
-  });
-
-  if (error) {
-    console.error('Submit error:', error);
-    await showModal({ title: 'Error', message: 'Could not submit answer. Please refresh.', confirmText: 'OK' });
+    // 🔄 Resync if out of sync
+    if (data.correctIndex !== undefined) {
+      currentIndex = data.correctIndex;
+      renderQuestion(currentIndex);
+    }
     return;
   }
 
@@ -171,29 +144,68 @@ async function submitAnswer(optionId) {
     return;
   }
 
-  if (elements.scoreValue) elements.scoreValue.textContent = data.newScore;
-  if (elements.streakCount) elements.streakCount.textContent = data.newStreak;
+  elements.scoreValue.textContent = data.newScore;
+  elements.streakCount.textContent = data.newStreak;
 
-  if (data.correctOptionId) {
-    elements.optionBtns.forEach(btn => {
-      if (btn.dataset.optionId === data.correctOptionId) {
-        btn.classList.add('correct');
-      }
-      if (optionId && btn.dataset.optionId === optionId && !data.correct) {
-        btn.classList.add('incorrect');
-      }
-    });
-  }
+  elements.optionBtns.forEach(btn => {
+    if (btn.dataset.optionId === data.correctOptionId) {
+      btn.classList.add('correct');
+    }
+    if (optionId && btn.dataset.optionId === optionId && !data.correct) {
+      btn.classList.add('incorrect');
+    }
+  });
 
   elements.optionBtns.forEach(btn => (btn.disabled = true));
 }
+
+// ✅ Offline-safe submission
+async function submitAnswer(optionId) {
+  if (answerSubmitted) return;
+  answerSubmitted = true;
+
+  const payload = {
+    p_session_id: sessionId,
+    p_question_index: currentIndex,
+    p_option_id: optionId,
+    p_time_remaining: Math.floor(getRemainingSecs())
+  };
+
+  try {
+    const { data, error } = await window.supabaseClient.rpc('submit_answer_sync', payload);
+
+    if (error) throw error;
+
+    handleAnswerResponse(data, optionId);
+
+  } catch {
+    console.warn("Offline — queued");
+    pendingAnswers.push(payload);
+  }
+}
+
+// ✅ Retry queued answers
+setInterval(async () => {
+  if (!pendingAnswers.length) return;
+
+  const queue = [...pendingAnswers];
+  pendingAnswers = [];
+
+  for (const payload of queue) {
+    try {
+      const { data, error } = await window.supabaseClient.rpc('submit_answer_sync', payload);
+      if (!error) handleAnswerResponse(data, payload.p_option_id);
+    } catch {
+      pendingAnswers.push(payload);
+    }
+  }
+}, 3000);
 
 function onOptionClick(e) {
   const btn = e.currentTarget;
   if (btn.disabled || answerSubmitted) return;
 
   const optionId = btn.dataset.optionId;
-  if (!optionId) return;
 
   elements.optionBtns.forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
@@ -201,96 +213,27 @@ function onOptionClick(e) {
   submitAnswer(optionId);
 }
 
-async function loadQuiz() {
-  const supabase = window.supabaseClient;
-  if (!supabase) {
-    showModal({ title: 'Error', message: 'Supabase client not loaded.', confirmText: 'OK' });
-    return;
-  }
-
-  const { data: quizMeta, error: metaError } = await supabase
-    .from('quizzes')
-    .select('starts_at, ends_at, question_time, total_questions, title')
-    .eq('id', quizId)
-    .single();
-
-  if (metaError || !quizMeta) {
-    window.location.href = 'dashboard.html';
-    return;
-  }
-
-  quizStartTime = new Date(quizMeta.starts_at).getTime();
-  quizEndTime = new Date(quizMeta.ends_at).getTime();
-  questionTimeSec = quizMeta.question_time;
-  totalQuestions = quizMeta.total_questions;
-
-  if (elements.quizTitle) elements.quizTitle.textContent = quizMeta.title;
-
-  const { data: sessionData } = await supabase
-    .from('quiz_sessions')
-    .select('score, streak')
-    .eq('id', sessionId)
-    .single();
-
-  if (sessionData) {
-    if (elements.scoreValue) elements.scoreValue.textContent = sessionData.score;
-    if (elements.streakCount) elements.streakCount.textContent = sessionData.streak;
-  }
-
-  const { data: qs, error: qError } = await supabase.rpc('get_quiz_questions', { p_quiz_id: quizId });
-
-  if (qError || !qs || qs.length === 0) {
-    showModal({ title: 'Error', message: 'Could not load quiz questions.', confirmText: 'OK' });
-    window.location.href = 'dashboard.html';
-    return;
-  }
-
-  questions = qs;
-  startLoop();
-  attachEvents();
-
-  const channel = window.supabaseClient
-  .channel('quiz-updates')
-  .on(
-    'postgres_changes',
-    {
-      event: 'UPDATE',
-      schema: 'public',
-      table: 'quiz_sessions',
-      filter: `id=eq.${sessionId}`
-    },
-    (payload) => {
-      console.log('Realtime update:', payload);
-
-      const newData = payload.new;
-
-      if (elements.scoreValue) elements.scoreValue.textContent = newData.score;
-      if (elements.streakCount) elements.streakCount.textContent = newData.streak;
-    }
-  )
-  .subscribe();
-}
-
 function startLoop() {
   if (timerInterval) clearInterval(timerInterval);
 
   timerInterval = setInterval(() => {
-    if (checkQuizEnded()) return;
 
-    const now = Date.now();
+    if (Date.now() >= quizEndTime) {
+      stopTimer();
+      window.location.href = `results.html?id=${quizId}&session=${sessionId}`;
+      return;
+    }
 
-    if (now < quizStartTime) {
-      const diffSec = Math.max(0, (quizStartTime - now) / 1000);
-      const mins = Math.floor(diffSec / 60);
-      const secs = Math.floor(diffSec % 60);
-
-      elements.timerText.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    if (Date.now() < quizStartTime) {
+      const diff = (quizStartTime - Date.now()) / 1000;
+      elements.timerText.textContent =
+        `${Math.floor(diff / 60)}:${Math.floor(diff % 60).toString().padStart(2, '0')}`;
       elements.questionText.textContent = 'Quiz starts soon...';
       elements.optionsGrid.style.display = 'none';
       return;
-    } else {
-      elements.optionsGrid.style.display = 'flex';
     }
+
+    elements.optionsGrid.style.display = 'flex';
 
     const newIndex = getCurrentIndex();
     const remainingSecs = getRemainingSecs();
@@ -299,7 +242,7 @@ function startLoop() {
 
     if (newIndex !== currentIndex) {
 
-      // ✅ FIX: Skip already expired question
+      // ✅ Skip expired question
       if (remainingSecs < 1) {
         currentIndex = newIndex;
         return;
@@ -317,14 +260,11 @@ function startLoop() {
       renderQuestion(currentIndex);
     }
 
-    // ✅ FIX: Grace period before auto-submit
-    const timeSinceLoad = Date.now() - questionLoadTime;
-
+    // ✅ Grace period auto-submit
     if (
       remainingSecs <= 0 &&
       !answerSubmitted &&
-      currentIndex >= 0 &&
-      timeSinceLoad > MIN_GRACE_MS
+      (Date.now() - questionLoadTime) > MIN_GRACE_MS
     ) {
       submitAnswer(null);
     }
@@ -332,33 +272,82 @@ function startLoop() {
   }, 200);
 }
 
+// ✅ Realtime sync
+function setupRealtime() {
+  realtimeChannel = window.supabaseClient
+    .channel('quiz-session')
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'quiz_sessions',
+      filter: `id=eq.${sessionId}`
+    }, payload => {
+      const data = payload.new;
+
+      if (elements.scoreValue) elements.scoreValue.textContent = data.score;
+      if (elements.streakCount) elements.streakCount.textContent = data.streak;
+    })
+    .subscribe();
+}
+
 function attachEvents() {
   elements.optionBtns.forEach(btn => btn.addEventListener('click', onOptionClick));
 
-  if (elements.quitBtn) elements.quitBtn.addEventListener('click', openQuitModal);
-  if (elements.cancelQuit) elements.cancelQuit.addEventListener('click', closeQuitModal);
+  elements.quitBtn?.addEventListener('click', () => elements.quitModal.classList.add('active'));
+  elements.cancelQuit?.addEventListener('click', () => elements.quitModal.classList.remove('active'));
 
-  if (elements.quitModal) {
-    elements.quitModal.addEventListener('click', (e) => {
-      if (e.target === elements.quitModal) closeQuitModal();
-    });
+  elements.quitModal?.addEventListener('click', e => {
+    if (e.target === elements.quitModal) {
+      elements.quitModal.classList.remove('active');
+    }
+  });
+}
+
+async function loadQuiz() {
+  const supabase = window.supabaseClient;
+
+  const { data: quizMeta } = await supabase
+    .from('quizzes')
+    .select('starts_at, ends_at, question_time, total_questions, title')
+    .eq('id', quizId)
+    .single();
+
+  quizStartTime = new Date(quizMeta.starts_at).getTime();
+  quizEndTime = new Date(quizMeta.ends_at).getTime();
+  questionTimeSec = quizMeta.question_time;
+  totalQuestions = quizMeta.total_questions;
+
+  elements.quizTitle.textContent = quizMeta.title;
+
+  const { data: sessionData } = await supabase
+    .from('quiz_sessions')
+    .select('score, streak')
+    .eq('id', sessionId)
+    .single();
+
+  if (sessionData) {
+    elements.scoreValue.textContent = sessionData.score;
+    elements.streakCount.textContent = sessionData.streak;
   }
-}
 
-function openQuitModal() {
-  if (elements.quitModal) elements.quitModal.classList.add('active');
-}
+  const { data: qs } = await supabase.rpc('get_quiz_questions', { p_quiz_id: quizId });
 
-function closeQuitModal() {
-  if (elements.quitModal) elements.quitModal.classList.remove('active');
+  questions = qs;
+
+  setupRealtime();
+  startLoop();
+  attachEvents();
 }
 
 function init() {
   getUrlParams();
 
   if (!quizId || !sessionId) {
-    showModal({ title: 'No Quiz', message: 'Invalid quiz session.', confirmText: 'OK' })
-      .then(() => window.location.href = 'dashboard.html');
+    showModal({
+      title: 'Error',
+      message: 'Invalid quiz session',
+      confirmText: 'OK'
+    }).then(() => window.location.href = 'dashboard.html');
     return;
   }
 
@@ -369,5 +358,6 @@ document.addEventListener('DOMContentLoaded', init);
 
 window.addEventListener('beforeunload', () => {
   if (timerInterval) clearInterval(timerInterval);
+  if (realtimeChannel) realtimeChannel.unsubscribe();
 });
 ```
