@@ -51,7 +51,7 @@ async function fetchCurrent() {
       // Get the most recent active hourly quiz
       const { data, error } = await supabase
         .from('quizzes')
-        .select('id, title, prize_pool, next_question_at')
+        .select('id, title, prize_pool, ends_at')
         .eq('type', 'hourly')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
@@ -61,7 +61,7 @@ async function fetchCurrent() {
       if (data) {
         currentData.id = data.id;
         currentData.prizePool = data.prize_pool;
-        currentData.endTime = data.next_question_at;
+        currentData.endTime = data.ends_at;
         currentData.leaderboardTable = 'quiz_leaderboard';
         currentData.filterField = 'quiz_id';
         elements.quizName.textContent = data.title;
@@ -163,10 +163,8 @@ function renderLeaderboard(players) {
     return;
   }
 
-  // Determine the score field name based on table
   const scoreKey = currentData.leaderboardTable === 'quiz_leaderboard' ? 'score' : 'total_score';
 
-  // Compute ranks and prize amounts
   const ranked = players.map((player, idx) => {
     const rank = idx + 1;
     let prize = 0;
@@ -232,7 +230,6 @@ async function switchType(type) {
   await fetchCurrent();
 }
 
-// Helper to escape HTML
 function escapeHtml(str) {
   if (!str) return '';
   return str
