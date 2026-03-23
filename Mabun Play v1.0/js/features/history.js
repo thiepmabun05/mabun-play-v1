@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const supabase = window.supabaseClient;
   if (!supabase) {
     console.error('Supabase client not available');
+    showModal({ title: 'Error', message: 'Supabase client not loaded.', confirmText: 'OK' });
     return;
   }
 
@@ -31,33 +32,64 @@ document.addEventListener('DOMContentLoaded', async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
-        .rpc('get_user_history', { user_id: user.id, period });
+      const { data, error } = await supabase.rpc('get_user_history', {
+        p_user_id: user.id,
+        p_period: period
+      });
 
       if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
       updateMetrics(data.metrics);
       updateChart(data.chartData, period);
       updateRecent(data.recent);
     } catch (error) {
-      showModal({ title: 'Error', message: error.message, confirmText: 'OK' });
+      console.error('Error loading history:', error);
+      showModal({ title: 'Error', message: error.message || 'Could not load performance data.', confirmText: 'OK' });
     }
   }
 
   function updateMetrics(metrics) {
-    elements.totalEarnings.textContent = formatCurrency(metrics.totalEarnings);
-    elements.avgScore.textContent = metrics.avgScore.toFixed(1);
-    elements.quizzesPlayed.textContent = metrics.quizzesPlayed;
-    elements.bestRank.textContent = '#' + metrics.bestRank;
+    if (!metrics) return;
 
-    elements.trendEarnings.innerHTML = metrics.trendEarnings ? `<iconify-icon icon="solar:arrow-${metrics.trendEarnings > 0 ? 'up' : 'down'}-bold"></iconify-icon> ${Math.abs(metrics.trendEarnings)}%` : '';
-    elements.trendAvg.innerHTML = metrics.trendAvg ? `<iconify-icon icon="solar:arrow-${metrics.trendAvg > 0 ? 'up' : 'down'}-bold"></iconify-icon> ${Math.abs(metrics.trendAvg)}%` : '';
-    elements.trendPlayed.innerHTML = metrics.trendPlayed ? `<iconify-icon icon="solar:arrow-${metrics.trendPlayed > 0 ? 'up' : 'down'}-bold"></iconify-icon> ${Math.abs(metrics.trendPlayed)}%` : '';
-    elements.trendRank.innerHTML = metrics.trendRank ? `<iconify-icon icon="solar:arrow-${metrics.trendRank > 0 ? 'up' : 'down'}-bold"></iconify-icon> ${Math.abs(metrics.trendRank)}%` : '';
+    elements.totalEarnings.textContent = formatCurrency(metrics.totalEarnings || 0);
+    elements.avgScore.textContent = (metrics.avgScore || 0).toFixed(1);
+    elements.quizzesPlayed.textContent = metrics.quizzesPlayed || 0;
+    elements.bestRank.textContent = '#' + (metrics.bestRank || 0);
+
+    // Trends
+    const trendEarn = metrics.trendEarnings;
+    const trendAvg = metrics.trendAvg;
+    const trendPlay = metrics.trendPlayed;
+    const trendRank = metrics.trendRank;
+
+    elements.trendEarnings.innerHTML = trendEarn
+      ? `<iconify-icon icon="solar:arrow-${trendEarn > 0 ? 'up' : 'down'}-bold"></iconify-icon> ${Math.abs(trendEarn).toFixed(1)}%`
+      : '';
+    elements.trendAvg.innerHTML = trendAvg
+      ? `<iconify-icon icon="solar:arrow-${trendAvg > 0 ? 'up' : 'down'}-bold"></iconify-icon> ${Math.abs(trendAvg).toFixed(1)}%`
+      : '';
+    elements.trendPlayed.innerHTML = trendPlay
+      ? `<iconify-icon icon="solar:arrow-${trendPlay > 0 ? 'up' : 'down'}-bold"></iconify-icon> ${Math.abs(trendPlay).toFixed(1)}%`
+      : '';
+    elements.trendRank.innerHTML = trendRank
+      ? `<iconify-icon icon="solar:arrow-${trendRank > 0 ? 'up' : 'down'}-bold"></iconify-icon> ${Math.abs(trendRank).toFixed(1)}%`
+      : '';
   }
 
   function updateChart(chartData, period) {
     const ctx = document.getElementById('performanceChart').getContext('2d');
     if (chart) chart.destroy();
+
+    if (!chartData || chartData.length === 0) {
+      // Empty state
+      new Chart(ctx, {
+        type: 'line',
+        data: { labels: [], datasets: [] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+      return;
+    }
 
     const labels = chartData.map(d => d.label);
     const earnings = chartData.map(d => d.earnings);
@@ -72,34 +104,55 @@ document.addEventListener('DOMContentLoaded', async () => {
           borderColor: '#680080',
           backgroundColor: 'rgba(104,0,128,0.1)',
           tension: 0.3,
-          fill: true
+          fill: true,
+          pointBackgroundColor: '#680080',
+          pointBorderColor: '#fff',
+          pointRadius: 4,
+          pointHoverRadius: 6
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => `${formatCurrency(ctx.raw)}` } }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: (val) => formatCurrency(val, true) } }
+        }
       }
     });
   }
 
   function updateRecent(recent) {
     if (!elements.recentQuizzes) return;
-    if (recent.length === 0) {
-      elements.recentQuizzes.innerHTML = '=<tr><td colspan="4" class="empty">No recent quizzes</td></tr>';
+    if (!recent || recent.length === 0) {
+      elements.recentQuizzes.innerHTML = '<tr><td colspan="4" class="empty">No recent quizzes</td></tr>';
       return;
     }
+
     elements.recentQuizzes.innerHTML = recent.map(q => `
       <tr>
         <td>${formatShortDate(q.date)}</td>
-        <td>${q.quizName}</td>
+        <td>${escapeHtml(q.quizName)}</td>
         <td>${q.score}</td>
         <td>${q.earnings ? formatCurrency(q.earnings) : '-'}</td>
       </tr>
     `).join('');
   }
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    });
+  }
+
+  // Attach period tab listeners
   elements.periodTabs.forEach(tab => {
     tab.addEventListener('click', () => {
       elements.periodTabs.forEach(t => t.classList.remove('active'));
@@ -109,5 +162,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  // Initial load
   loadHistory(currentPeriod);
 });
