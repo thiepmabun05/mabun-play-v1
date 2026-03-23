@@ -1,5 +1,5 @@
 // js/core/app.js
-import { setupAuthGuard, waitForUser } from './guards.js';
+import { setupAuthGuard } from './guards.js';
 
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 if ('serviceWorker' in navigator && !isLocal) {
@@ -14,7 +14,6 @@ window.addEventListener('error', (event) => {
   console.error('Global error:', event.error);
 });
 
-// Update header avatar
 async function updateHeaderAvatar() {
   const avatarElement = document.querySelector('.profile-avatar');
   if (!avatarElement) return;
@@ -36,57 +35,20 @@ async function updateHeaderAvatar() {
   }
   avatarElement.innerHTML = `<img src="${profile.avatar_url}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">`;
 }
+
 window.updateHeaderAvatar = updateHeaderAvatar;
 
-// Real‑time notifications subscription
-let notificationChannel = null;
+document.addEventListener('DOMContentLoaded', async () => {
+  await setupAuthGuard();
+  await updateHeaderAvatar();
 
-async function subscribeToNotifications() {
-  const supabase = window.supabaseClient;
-  if (!supabase) return;
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-
-  if (notificationChannel) {
-    await supabase.removeChannel(notificationChannel);
-  }
-
-  notificationChannel = supabase
-    .channel(`notifications-${user.id}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user.id}`,
-      },
-      (payload) => {
-        const notification = payload.new;
-        Swal.fire({
-          toast: true,
-          position: 'top-end',
-          icon: 'info',
-          title: notification.title,
-          text: notification.message,
-          showConfirmButton: false,
-          timer: 5000,
-          timerProgressBar: true,
-          didOpen: (toast) => {
-            toast.addEventListener('click', () => {
-              if (notification.link) {
-                window.location.href = notification.link;
-              }
-            });
-          }
-        });
-        const dot = document.querySelector('.notification-dot');
-        if (dot) dot.style.display = 'block';
-      }
-    )
-    .subscribe();
-}
+  document.querySelectorAll('.back-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.history.back();
+    });
+  });
+});
 
 function waitForSupabase() {
   return new Promise((resolve) => {
@@ -102,57 +64,26 @@ function waitForSupabase() {
   });
 }
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', async () => {
-  await setupAuthGuard();
-  await updateHeaderAvatar();
-
-  const user = await waitForUser();
-  if (user) {
-    subscribeToNotifications();
-  }
-
-  document.querySelectorAll('.back-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.history.back();
-    });
+waitForSupabase().then(supabase => {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      localStorage.setItem('mabun_user', JSON.stringify(session.user));
+      localStorage.setItem('mabun_token', session.access_token);
+      updateHeaderAvatar();
+    } else {
+      localStorage.removeItem('mabun_user');
+      localStorage.removeItem('mabun_token');
+      updateHeaderAvatar();
+    }
   });
+});
 
+// Fix header overlap
+document.addEventListener('DOMContentLoaded', () => {
   const header = document.querySelector('.app-bar');
   const main = document.querySelector('.main-content');
   if (header && main) {
     const firstChild = main.children[1];
     if (firstChild) firstChild.style.marginTop = '0';
   }
-});
-
-// Auth state listener
-waitForSupabase().then(supabase => {
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
-      localStorage.setItem('mabun_user', JSON.stringify(session.user));
-      localStorage.setItem('mabun_token', session.access_token);
-      updateHeaderAvatar();
-
-      // Check if profile has username
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', session.user.id)
-        .single();
-      const currentPath = window.location.pathname.split('/').pop();
-      if ((!profile || !profile.username) && currentPath !== 'complete-profile.html') {
-        window.location.href = 'complete-profile.html';
-      }
-    } else if (event === 'SIGNED_OUT') {
-      localStorage.removeItem('mabun_user');
-      localStorage.removeItem('mabun_token');
-      updateHeaderAvatar();
-      if (notificationChannel) {
-        supabase.removeChannel(notificationChannel);
-        notificationChannel = null;
-      }
-    }
-  });
 });
