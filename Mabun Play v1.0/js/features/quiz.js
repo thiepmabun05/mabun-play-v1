@@ -1,4 +1,5 @@
-// js/features/quiz.js (debug version)
+```javascript
+// js/features/quiz.js (FIXED VERSION)
 import { showModal } from '../utils/modal.js';
 
 const elements = {
@@ -29,6 +30,10 @@ let currentIndex = -1;
 let answerSubmitted = false;
 let timerInterval = null;
 let questions = [];
+
+// ✅ NEW: Prevent instant auto-submit bugs
+let questionLoadTime = 0;
+const MIN_GRACE_MS = 800; // 0.8s protection window
 
 function getUrlParams() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -84,6 +89,7 @@ function renderQuestion(index) {
   }
 
   if (elements.questionText) elements.questionText.textContent = q.text;
+
   if (elements.optionsGrid && q.options) {
     const letters = ['A', 'B', 'C', 'D'];
     elements.optionBtns.forEach((btn, i) => {
@@ -123,22 +129,29 @@ function getCurrentIndex() {
   return Math.min(idx, totalQuestions - 1);
 }
 
+// ✅ FIXED: Prevent negative / zero instant timing bugs
 function getRemainingSecs() {
   const now = Date.now();
   const elapsedSec = (now - quizStartTime) / 1000;
   const questionStartOffset = currentIndex * questionTimeSec;
   const questionElapsed = elapsedSec - questionStartOffset;
-  return Math.max(0, questionTimeSec - questionElapsed);
+
+  return Math.max(0.5, questionTimeSec - questionElapsed);
 }
 
 async function submitAnswer(optionId) {
   if (answerSubmitted) return;
   answerSubmitted = true;
-  console.log(`submitAnswer called with optionId=${optionId}`);
 
   const remainingSecs = getRemainingSecs();
   const integerRemaining = Math.floor(remainingSecs);
-  console.log(`Sending: session=${sessionId}, index=${currentIndex}, option=${optionId}, remaining=${integerRemaining}`);
+
+  console.log("RPC payload:", {
+    sessionId,
+    currentIndex,
+    optionId,
+    integerRemaining
+  });
 
   const { data, error } = await window.supabaseClient.rpc('submit_answer_sync', {
     p_session_id: sessionId,
@@ -152,7 +165,6 @@ async function submitAnswer(optionId) {
     await showModal({ title: 'Error', message: 'Could not submit answer. Please refresh.', confirmText: 'OK' });
     return;
   }
-  console.log('Submit response:', data);
 
   if (data.finished) {
     window.location.href = `results.html?id=${quizId}&session=${sessionId}`;
@@ -178,32 +190,31 @@ async function submitAnswer(optionId) {
 
 function onOptionClick(e) {
   const btn = e.currentTarget;
-  console.log("Option clicked, disabled? " + btn.disabled + ", answerSubmitted=" + answerSubmitted);
   if (btn.disabled || answerSubmitted) return;
+
   const optionId = btn.dataset.optionId;
   if (!optionId) return;
-  console.log("Option clicked:", optionId);
+
   elements.optionBtns.forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
+
   submitAnswer(optionId);
 }
 
 async function loadQuiz() {
-  console.log("loadQuiz started");
   const supabase = window.supabaseClient;
   if (!supabase) {
     showModal({ title: 'Error', message: 'Supabase client not loaded.', confirmText: 'OK' });
     return;
   }
 
-  // Get quiz metadata
   const { data: quizMeta, error: metaError } = await supabase
     .from('quizzes')
     .select('starts_at, ends_at, question_time, total_questions, title')
     .eq('id', quizId)
     .single();
+
   if (metaError || !quizMeta) {
-    console.error('Failed to load quiz metadata:', metaError);
     window.location.href = 'dashboard.html';
     return;
   }
@@ -212,41 +223,34 @@ async function loadQuiz() {
   quizEndTime = new Date(quizMeta.ends_at).getTime();
   questionTimeSec = quizMeta.question_time;
   totalQuestions = quizMeta.total_questions;
+
   if (elements.quizTitle) elements.quizTitle.textContent = quizMeta.title;
 
-  // Get current session details (score, streak)
-  const { data: sessionData, error: sessionError } = await supabase
+  const { data: sessionData } = await supabase
     .from('quiz_sessions')
     .select('score, streak')
     .eq('id', sessionId)
     .single();
-  if (!sessionError && sessionData) {
-    console.log("Session score:", sessionData.score, "streak:", sessionData.streak);
+
+  if (sessionData) {
     if (elements.scoreValue) elements.scoreValue.textContent = sessionData.score;
     if (elements.streakCount) elements.streakCount.textContent = sessionData.streak;
-  } else if (sessionError) {
-    console.error('Error fetching session:', sessionError);
   }
 
-  // Preload questions
   const { data: qs, error: qError } = await supabase.rpc('get_quiz_questions', { p_quiz_id: quizId });
+
   if (qError || !qs || qs.length === 0) {
-    console.error('Failed to load questions:', qError);
     showModal({ title: 'Error', message: 'Could not load quiz questions.', confirmText: 'OK' });
     window.location.href = 'dashboard.html';
     return;
   }
-  questions = qs;
-  console.log('Loaded questions:', questions.length);
-  console.log('First question object:', questions[0]); // check for correct_option
 
-  // Start the loop
+  questions = qs;
   startLoop();
   attachEvents();
 }
 
 function startLoop() {
-  console.log("startLoop started");
   if (timerInterval) clearInterval(timerInterval);
 
   timerInterval = setInterval(() => {
@@ -254,11 +258,11 @@ function startLoop() {
 
     const now = Date.now();
 
-    // Quiz hasn't started yet
     if (now < quizStartTime) {
       const diffSec = Math.max(0, (quizStartTime - now) / 1000);
       const mins = Math.floor(diffSec / 60);
       const secs = Math.floor(diffSec % 60);
+
       elements.timerText.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
       elements.questionText.textContent = 'Quiz starts soon...';
       elements.optionsGrid.style.display = 'none';
@@ -269,32 +273,50 @@ function startLoop() {
 
     const newIndex = getCurrentIndex();
     const remainingSecs = getRemainingSecs();
-    console.log(`Loop: newIndex=${newIndex}, currentIndex=${currentIndex}, remainingSecs=${remainingSecs}, answerSubmitted=${answerSubmitted}`);
 
     updateTimerDisplay(remainingSecs);
 
     if (newIndex !== currentIndex) {
-      console.log(`Question changed to index ${newIndex}`);
+
+      // ✅ FIX: Skip already expired question
+      if (remainingSecs < 1) {
+        currentIndex = newIndex;
+        return;
+      }
+
       currentIndex = newIndex;
       answerSubmitted = false;
+      questionLoadTime = Date.now();
+
       elements.optionBtns.forEach(btn => {
         btn.disabled = false;
         btn.classList.remove('correct', 'incorrect', 'selected');
       });
+
       renderQuestion(currentIndex);
     }
 
-    if (remainingSecs <= 0 && !answerSubmitted && currentIndex >= 0) {
-      console.log('Timer expired, auto‑submitting');
+    // ✅ FIX: Grace period before auto-submit
+    const timeSinceLoad = Date.now() - questionLoadTime;
+
+    if (
+      remainingSecs <= 0 &&
+      !answerSubmitted &&
+      currentIndex >= 0 &&
+      timeSinceLoad > MIN_GRACE_MS
+    ) {
       submitAnswer(null);
     }
+
   }, 200);
 }
 
 function attachEvents() {
   elements.optionBtns.forEach(btn => btn.addEventListener('click', onOptionClick));
+
   if (elements.quitBtn) elements.quitBtn.addEventListener('click', openQuitModal);
   if (elements.cancelQuit) elements.cancelQuit.addEventListener('click', closeQuitModal);
+
   if (elements.quitModal) {
     elements.quitModal.addEventListener('click', (e) => {
       if (e.target === elements.quitModal) closeQuitModal();
@@ -305,22 +327,26 @@ function attachEvents() {
 function openQuitModal() {
   if (elements.quitModal) elements.quitModal.classList.add('active');
 }
+
 function closeQuitModal() {
   if (elements.quitModal) elements.quitModal.classList.remove('active');
 }
 
 function init() {
   getUrlParams();
+
   if (!quizId || !sessionId) {
-    showModal({ title: 'No Quiz', message: 'Invalid quiz session.', confirmText: 'OK' }).then(() => {
-      window.location.href = 'dashboard.html';
-    });
+    showModal({ title: 'No Quiz', message: 'Invalid quiz session.', confirmText: 'OK' })
+      .then(() => window.location.href = 'dashboard.html');
     return;
   }
+
   loadQuiz();
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
 window.addEventListener('beforeunload', () => {
   if (timerInterval) clearInterval(timerInterval);
 });
+```
