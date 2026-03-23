@@ -26,7 +26,6 @@ let questionTimeSec = 10;
 let totalQuestions = 0;
 
 let currentIndex = -1;
-let lastDisplayedIndex = -1;
 let answerSubmitted = false;
 let timerInterval = null;
 let questions = [];
@@ -51,7 +50,8 @@ function stopTimer() {
 
 function updateTimerDisplay(remainingSecs) {
   if (!elements.timerText) return;
-  elements.timerText.textContent = Math.floor(remainingSecs);
+  const displaySecs = Math.floor(remainingSecs);
+  elements.timerText.textContent = displaySecs;
 
   if (elements.timerProgress && questionTimeSec > 0) {
     const circumference = 2 * Math.PI * 18;
@@ -136,8 +136,9 @@ async function submitAnswer(optionId) {
   answerSubmitted = true;
 
   const remainingSecs = getRemainingSecs();
-  // Floor to avoid floating point errors (RPC expects integer)
   const integerRemaining = Math.floor(remainingSecs);
+
+  console.log(`Submitting answer for index ${currentIndex}, option ${optionId}, remaining ${integerRemaining}`);
 
   const { data, error } = await window.supabaseClient.rpc('submit_answer_sync', {
     p_session_id: sessionId,
@@ -151,6 +152,8 @@ async function submitAnswer(optionId) {
     await showModal({ title: 'Error', message: 'Could not submit answer. Please refresh.', confirmText: 'OK' });
     return;
   }
+
+  console.log('Submit response:', data);
 
   if (data.finished) {
     window.location.href = `results.html?id=${quizId}&session=${sessionId}`;
@@ -180,6 +183,7 @@ function onOptionClick(e) {
   const optionId = btn.dataset.optionId;
   if (!optionId) return;
 
+  console.log('Option clicked:', optionId);
   elements.optionBtns.forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
   submitAnswer(optionId);
@@ -192,6 +196,7 @@ async function loadQuiz() {
     return;
   }
 
+  // Get quiz metadata
   const { data: quizMeta, error: metaError } = await supabase
     .from('quizzes')
     .select('starts_at, ends_at, question_time, total_questions, title')
@@ -209,7 +214,8 @@ async function loadQuiz() {
   totalQuestions = quizMeta.total_questions;
   if (elements.quizTitle) elements.quizTitle.textContent = quizMeta.title;
 
-  const { data: qs, error: qError } = await supabase.rpc('get_quiz_questions', { quiz_id: quizId });
+  // Preload questions
+  const { data: qs, error: qError } = await supabase.rpc('get_quiz_questions', { p_quiz_id: quizId });
   if (qError || !qs || qs.length === 0) {
     console.error('Failed to load questions:', qError);
     showModal({ title: 'Error', message: 'Could not load quiz questions.', confirmText: 'OK' });
@@ -217,7 +223,9 @@ async function loadQuiz() {
     return;
   }
   questions = qs;
+  console.log('Loaded questions:', questions.length);
 
+  // Start the loop
   startLoop();
   attachEvents();
 }
@@ -229,11 +237,13 @@ function startLoop() {
     if (checkQuizEnded()) return;
 
     const now = Date.now();
+
+    // Quiz hasn't started yet
     if (now < quizStartTime) {
       const diffSec = Math.max(0, (quizStartTime - now) / 1000);
       const mins = Math.floor(diffSec / 60);
       const secs = Math.floor(diffSec % 60);
-      elements.timerText.textContent = `${mins}:${secs.toString().padStart(2,'0')}`;
+      elements.timerText.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
       elements.questionText.textContent = 'Quiz starts soon...';
       elements.optionsGrid.style.display = 'none';
       return;
@@ -246,9 +256,12 @@ function startLoop() {
 
     updateTimerDisplay(remainingSecs);
 
+    // If the index changed, reset answer state and render new question
     if (newIndex !== currentIndex) {
+      console.log(`Question changed to index ${newIndex}`);
       currentIndex = newIndex;
       answerSubmitted = false;
+      // Re‑enable buttons and remove highlights
       elements.optionBtns.forEach(btn => {
         btn.disabled = false;
         btn.classList.remove('correct', 'incorrect', 'selected');
@@ -256,10 +269,12 @@ function startLoop() {
       renderQuestion(currentIndex);
     }
 
+    // Auto‑submit when timer hits 0 and not yet answered
     if (remainingSecs <= 0 && !answerSubmitted && currentIndex >= 0) {
+      console.log('Timer expired, auto‑submitting');
       submitAnswer(null);
     }
-  }, 200);
+  }, 200); // 200ms for smooth timer
 }
 
 function attachEvents() {
