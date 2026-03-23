@@ -29,12 +29,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
-    const { data: results, error } = await supabase
-      .rpc('get_quiz_results', { session_id: sessionId });
+    const { data: results, error } = await supabase.rpc('get_quiz_results', { p_session_id: sessionId });
     if (error) throw error;
+    if (results.error) throw new Error(results.error);
     renderResults(results);
   } catch (error) {
-    await showModal({ title: 'Error', message: error.message, confirmText: 'OK' });
+    console.error('Results error:', error);
+    await showModal({ title: 'Error', message: error.message || 'Could not load results.', confirmText: 'OK' });
+    window.location.href = 'dashboard.html';
   }
 
   function renderResults(data) {
