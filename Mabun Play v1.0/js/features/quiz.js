@@ -248,6 +248,27 @@ async function loadQuiz() {
   questions = qs;
   startLoop();
   attachEvents();
+
+  const channel = window.supabaseClient
+  .channel('quiz-updates')
+  .on(
+    'postgres_changes',
+    {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'quiz_sessions',
+      filter: `id=eq.${sessionId}`
+    },
+    (payload) => {
+      console.log('Realtime update:', payload);
+
+      const newData = payload.new;
+
+      if (elements.scoreValue) elements.scoreValue.textContent = newData.score;
+      if (elements.streakCount) elements.streakCount.textContent = newData.streak;
+    }
+  )
+  .subscribe();
 }
 
 function startLoop() {
