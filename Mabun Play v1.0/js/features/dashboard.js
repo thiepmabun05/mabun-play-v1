@@ -135,7 +135,7 @@ async function fetchDashboard() {
       };
     }
 
-    // ----- Next Quiz Countdown -----
+    // ----- Next Quiz (always fetch, even if active) -----
     const { data: nextQuiz } = await supabase
       .from('quizzes')
       .select('starts_at')
@@ -246,18 +246,48 @@ function renderUser() {
   if (elements.statRank) elements.statRank.textContent = '#' + state.user.rank;
 }
 
+function updateJoinButtonText() {
+  if (!elements.joinBtn) return;
+
+  const now = Date.now();
+
+  // Active quiz exists
+  if (state.liveQuiz.id && state.liveQuiz.endsAt) {
+    const endTime = new Date(state.liveQuiz.endsAt).getTime();
+    if (now <= endTime) { // quiz still active
+      if (state.liveQuiz.hasPaid) {
+        elements.joinBtn.textContent = 'Continue Quiz';
+        elements.joinBtn.disabled = false;
+      } else {
+        elements.joinBtn.textContent = 'Join Now (100 Coins)';
+        elements.joinBtn.disabled = !state.liveQuiz.canJoin;
+      }
+      return;
+    }
+  }
+
+  // No active quiz, but there is a future quiz
+  if (state.nextQuizStartsAt) {
+    const startTime = new Date(state.nextQuizStartsAt).getTime();
+    if (now < startTime) {
+      const diffSec = Math.floor((startTime - now) / 1000);
+      const mins = Math.floor(diffSec / 60);
+      const secs = diffSec % 60;
+      elements.joinBtn.textContent = `Starts in ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      elements.joinBtn.disabled = true;
+      return;
+    }
+  }
+
+  // No active quiz and no future quiz
+  elements.joinBtn.textContent = 'No upcoming quiz';
+  elements.joinBtn.disabled = true;
+}
+
 function renderLiveQuiz() {
   if (elements.liveQuizTitle) elements.liveQuizTitle.textContent = state.liveQuiz.title;
   if (elements.hourlyPrize) elements.hourlyPrize.textContent = `${state.liveQuiz.prizePool.toLocaleString()} Coins`;
-  if (elements.joinBtn) {
-    if (state.liveQuiz.hasPaid) {
-      elements.joinBtn.textContent = 'Continue Quiz';
-      elements.joinBtn.disabled = false;
-    } else {
-      elements.joinBtn.textContent = 'Join Now (100 Coins)';
-      elements.joinBtn.disabled = !state.liveQuiz.canJoin;
-    }
-  }
+  updateJoinButtonText();
 }
 
 function renderDaily() {
@@ -278,13 +308,7 @@ function renderSubscribeButton() {
 }
 
 function updateButtonStates() {
-  if (elements.joinBtn) {
-    if (state.liveQuiz.hasPaid) {
-      elements.joinBtn.disabled = false;
-    } else {
-      elements.joinBtn.disabled = !state.liveQuiz.canJoin;
-    }
-  }
+  updateJoinButtonText();
   if (elements.dailyChallengeBtn) elements.dailyChallengeBtn.disabled = state.dailyChallenge.hasEntered;
   if (elements.weeklyChallengeBtn) elements.weeklyChallengeBtn.disabled = state.weeklyChallenge.hasEntered;
 }
@@ -301,11 +325,16 @@ function startTimers() {
       const mins = Math.floor(diff / 60000);
       const secs = Math.floor((diff % 60000) / 1000);
       elements.liveTimer.textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+
+      // If the active quiz just ended, refetch dashboard to load the next one
+      if (diff === 0 && state.liveQuiz.id) {
+        fetchDashboard();
+      }
     } else if (elements.liveTimer) {
       elements.liveTimer.textContent = '00:00';
     }
 
-    // Next quiz countdown
+    // Next quiz countdown (separate display, but we also update button)
     if (state.nextQuizStartsAt && elements.nextQuizTimer) {
       const startTime = new Date(state.nextQuizStartsAt).getTime();
       const diff = Math.max(0, startTime - now);
@@ -316,7 +345,10 @@ function startTimers() {
       elements.nextQuizTimer.textContent = '--:--';
     }
 
-    // Daily/Weekly payouts
+    // Update button text every second (countdown on button)
+    updateJoinButtonText();
+
+    // Daily/Weekly payout countdowns
     if (state.dailyChallenge.payoutTime && elements.dailyPayoutCountdown) {
       const payoutTime = new Date(state.dailyChallenge.payoutTime).getTime();
       const diff = Math.max(0, payoutTime - now);
@@ -365,14 +397,25 @@ async function handleJoinQuiz() {
     if (error) throw error;
     if (data.error) {
       if (data.error === 'Already joined') {
-        // Resume existing session
         window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${data.session_id}`;
+        return;
+      }
+      if (data.error === 'Quiz has not started') {
+        const startTime = new Date(state.liveQuiz.startsAt).getTime();
+        const now = Date.now();
+        const diffSec = Math.max(0, Math.floor((startTime - now) / 1000));
+        const mins = Math.floor(diffSec / 60);
+        const secs = diffSec % 60;
+        await showModal({
+          title: 'Quiz Not Started',
+          message: `This quiz will start in ${mins} minute${mins !== 1 ? 's' : ''} and ${secs} second${secs !== 1 ? 's' : ''}. Please wait.`,
+          confirmText: 'OK'
+        });
         return;
       }
       throw new Error(data.error);
     }
 
-    // New session created
     const sessionId = data.session_id;
     window.location.href = `quiz.html?id=${state.liveQuiz.id}&session=${sessionId}`;
   } catch (err) {
