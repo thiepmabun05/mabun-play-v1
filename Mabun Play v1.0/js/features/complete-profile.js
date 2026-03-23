@@ -2,14 +2,54 @@
 import { showModal } from '../utils/modal.js';
 import { validateUsername } from '../utils/validation.js';
 import config from '../core/config.js';
+import { waitForUser } from '../core/guards.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const pending = sessionStorage.getItem('pending_registration');
-  if (!pending) {
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    showModal({ title: 'Error', message: 'Supabase client not loaded.', confirmText: 'OK' });
+    return;
+  }
+
+  // Wait for user to be fully authenticated (especially after email confirmation)
+  const user = await waitForUser();
+  if (!user) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  // Fetch existing profile
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('username, phone, provider')
+    .eq('id', user.id)
+    .single();
+
+  let pendingData = null;
+  const stored = localStorage.getItem('pending_registration');
+  if (stored) {
+    pendingData = JSON.parse(stored);
+  }
+
+  // If profile already has a username and no pending data, they are complete
+  if (profile && profile.username && (!pendingData || !pendingData.phone)) {
+    window.location.href = 'dashboard.html';
+    return;
+  }
+
+  // If no pending data but profile exists, use profile phone if any
+  if (!pendingData && profile) {
+    pendingData = {
+      phone: profile.phone || '',
+      provider: profile.provider || 'mtn',
+    };
+  }
+
+  // If still no phone, redirect to register (should not happen)
+  if (!pendingData || !pendingData.phone) {
     window.location.href = 'register.html';
     return;
   }
-  const pendingData = JSON.parse(pending);
 
   const mmPhone = document.getElementById('mmPhone');
   const mmBadge = document.getElementById('mmBadge');
@@ -26,13 +66,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   mmBadge.textContent = provider === 'mtn' ? 'MTN MoMo' : 'Digitel DigiCash';
   mmBadge.className = `mm-badge ${provider}`;
   providerInput.value = provider;
-
-  const supabase = window.supabaseClient;
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    window.location.href = 'login.html';
-    return;
-  }
   emailInput.value = user.email || '';
 
   if (!config.ENABLE_PAYMENTS) {
@@ -53,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     submitBtn.innerHTML = '<span class="loader"></span> Saving...';
 
     try {
-      // Use upsert to update existing profile or insert new one
+      // Upsert profile (includes coins_balance)
       const { error: upsertError } = await supabase
         .from('profiles')
         .upsert({
@@ -62,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           email: user.email,
           phone: pendingData.phone,
           provider,
-          coins_balance: 15000,        // initial Mabun coins
+          coins_balance: 15000,
           wallet_balance: 0,
           winnings: 0,
           played: 0,
@@ -71,8 +104,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (upsertError) throw upsertError;
 
+      // Update auth user metadata (optional)
       await supabase.auth.updateUser({ data: { username } });
-      sessionStorage.removeItem('pending_registration');
+
+      // Clear pending data
+      localStorage.removeItem('pending_registration');
+
       window.location.href = 'dashboard.html';
     } catch (error) {
       console.error('Profile completion error:', error);
