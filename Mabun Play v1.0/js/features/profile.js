@@ -131,7 +131,7 @@ async function fetchFollowStats(userId) {
     const { data, error } = await supabase
       .rpc('get_follow_stats', { user_id: userId });
     if (error) throw error;
-    // RPC returns an array with one object
+    // The function returns an array with one object
     const stats = data && data[0] ? data[0] : { followers: 0, following: 0 };
     return { followers: stats.followers, following: stats.following };
   } catch (err) {
@@ -156,18 +156,6 @@ async function fetchFollowStatus(targetUserId) {
   return !!data;
 }
 
-async function fetchUserRank(userId) {
-  const supabase = window.supabaseClient;
-  if (!supabase) return 0;
-  const { data, error } = await supabase
-    .from('user_rankings')
-    .select('rank')
-    .eq('user_id', userId)
-    .single();
-  if (error || !data) return 0;
-  return data.rank;
-}
-
 function renderProfile() {
   if (!profileUser) return;
 
@@ -176,9 +164,7 @@ function renderProfile() {
   elements.avatarImg.src = profileUser.avatar_url || '/assets/images/default-avatar.png';
   elements.statWinnings.textContent = formatCurrency(profileUser.winnings || 0, true);
   elements.statPlayed.textContent = profileUser.played || 0;
-  fetchUserRank(profileUser.id).then(rank => {
-  elements.statRank.textContent = '#' + rank;
-});
+  elements.statRank.textContent = '#' + (profileUser.rank || 0);
   elements.accountPhone.textContent = profileUser.phone || '—';
   elements.displayUsername.textContent = profileUser.username;
   elements.displayEmail.textContent = profileUser.email || '—';
@@ -202,6 +188,12 @@ function renderProfile() {
     elements.avatarUploadBtn.style.display = 'none';
   }
 
+  // Hide KYC section for other users
+  const kycSection = document.querySelector('.kyc-section');
+  if (kycSection) {
+    kycSection.style.display = isOwnProfile ? 'block' : 'none';
+  }
+
   if (elements.achievementsList) {
     if (profileUser.achievements && profileUser.achievements.length) {
       elements.achievementsList.innerHTML = profileUser.achievements.map(ach => `
@@ -217,13 +209,11 @@ function renderProfile() {
     }
   }
 
-  // Fetch stats and update counts
   fetchFollowStats(profileUser.id).then(stats => {
     elements.followersCount.textContent = stats.followers;
     elements.followingCount.textContent = stats.following;
   });
 
-  // Set follow button state if viewing another user
   if (!isOwnProfile && currentUser) {
     elements.followBtn.style.display = 'block';
     fetchFollowStatus(profileUser.id).then(isFollowing => {
@@ -292,21 +282,11 @@ async function handleFollow() {
       if (error) throw error;
     }
 
-    // Update button text and class
     elements.followBtn.textContent = isFollowing ? 'Follow' : 'Unfollow';
     elements.followBtn.className = isFollowing ? 'btn btn-outline' : 'btn btn-primary';
 
-    // Refresh stats and button state
     const stats = await fetchFollowStats(profileUser.id);
     elements.followersCount.textContent = stats.followers;
-
-    // Also update the follow status locally to avoid re‑fetching
-    if (isFollowing) {
-      // Unfollowed: button text "Follow"
-    } else {
-      // Followed: button text "Unfollow"
-    }
-
     showToast('Success', isFollowing ? 'Unfollowed' : 'Following', 'success');
   } catch (err) {
     console.error(err);
@@ -550,38 +530,37 @@ async function submitKyc(e) {
   elements.submitKycBtn.innerHTML = '<span class="loader"></span> Submitting...';
 
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) throw new Error('Not authenticated');
-
+    const { data: { user } } = await supabase.auth.getUser();
     const fileExt = file.name.split('.').pop();
     const fileName = `kyc/${user.id}/${Date.now()}.${fileExt}`;
     const { error: uploadError } = await supabase.storage
       .from('kyc')
       .upload(fileName, file);
     if (uploadError) throw uploadError;
-
     const { data: { publicUrl } } = supabase.storage.from('kyc').getPublicUrl(fileName);
 
-    const { data, error } = await supabase.rpc('insert_kyc_submission', {
-      p_user_id: user.id,
-      p_full_name: fullName,
-      p_id_number: idNumber,
-      p_document_url: publicUrl
-    });
-
-    if (error) throw error;
-    if (!data.success) throw new Error(data.error || 'Submission failed');
+    const { error: insertError } = await supabase
+      .from('kyc_submissions')
+      .insert({
+        user_id: user.id,
+        full_name: fullName,
+        id_number: idNumber,
+        document_url: publicUrl,
+        status: 'pending',
+        submitted_at: new Date().toISOString(),
+      });
+    if (insertError) throw insertError;
 
     showToast('Success', 'KYC submitted successfully. Awaiting verification.', 'success');
     loadKycStatus();
   } catch (err) {
-    console.error('KYC submission error:', err);
     showToast('Error', err.message || 'Submission failed', 'error');
   } finally {
     elements.submitKycBtn.disabled = false;
     elements.submitKycBtn.innerHTML = 'Submit Verification';
   }
 }
+
 function setupKycPreview() {
   if (elements.idDocument) {
     elements.idDocument.addEventListener('change', (e) => {
