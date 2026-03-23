@@ -45,6 +45,8 @@ function unsubscribeAll() {
 
 async function fetchCurrent() {
   const supabase = window.supabaseClient;
+  // Complete any expired challenges before loading
+await supabase.rpc('complete_expired_challenges');
   if (!supabase) return;
 
   try {
