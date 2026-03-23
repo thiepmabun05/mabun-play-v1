@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // Phone provider detection
   if (phoneInput && providerBadge) {
     phoneInput.addEventListener('input', () => {
       const digits = phoneInput.value.replace(/\D/g, '');
@@ -76,25 +75,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const { data, error } = await window.supabaseClient.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: window.location.origin + '/complete-profile.html'
-        }
       });
       if (error) throw error;
 
-      // Store pending registration data in localStorage
-      localStorage.setItem('pending_registration', JSON.stringify({
+      // Store pending registration data in sessionStorage
+      sessionStorage.setItem('pending_registration', JSON.stringify({
         phone: '+211' + rawPhone,
         provider: detectProvider(rawPhone) || 'mtn',
       }));
 
-      // Show confirmation message
-      await showModal({
-        title: 'Verify Your Email',
-        message: 'We sent a confirmation link to your email. Please click it to continue.',
-        confirmText: 'OK'
-      });
-      window.location.href = 'complete-profile.html?waiting=true';
+      // Redirect immediately to complete profile page
+      window.location.href = 'complete-profile.html';
     } catch (error) {
       console.error('Registration error:', error);
       await showModal({
