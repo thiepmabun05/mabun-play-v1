@@ -1,6 +1,6 @@
 // js/features/complete-profile.js
 import { showModal } from '../utils/modal.js';
-import { validateUsername } from '../utils/validation.js';
+import { validateUsername, validateEmail } from '../utils/validation.js';
 import config from '../core/config.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     submitBtn.innerHTML = '<span class="loader"></span> Saving...';
 
     try {
+      // Use upsert to update existing profile or insert new one
       const { error: upsertError } = await supabase
         .from('profiles')
         .upsert({
@@ -61,7 +62,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           email: user.email,
           phone: pendingData.phone,
           provider,
-          coins_balance: 15000,
           wallet_balance: 0,
           winnings: 0,
           played: 0,
