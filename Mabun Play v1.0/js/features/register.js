@@ -4,6 +4,8 @@ import { validatePhone, validatePassword, detectProvider } from '../utils/valida
 import { initPasswordToggles } from '../utils/password-toggle.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOMContentLoaded in register.js');
+
   initPasswordToggles();
 
   const form = document.getElementById('registerForm');
@@ -12,10 +14,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const providerBadge = document.getElementById('providerBadge');
   const submitBtn = document.getElementById('submitBtn');
 
-  if (!form) return;
+  if (!form) {
+    console.error('❌ registerForm not found');
+    return;
+  }
+
+  if (!emailInput) console.warn('⚠️ email input not found');
+  if (!phoneInput) console.warn('⚠️ phone input not found');
+  if (!providerBadge) console.warn('⚠️ providerBadge not found');
+  if (!submitBtn) console.warn('⚠️ submit button not found');
 
   if (typeof window.supabaseClient === 'undefined') {
-    console.error('Supabase client not defined');
+    console.error('❌ Supabase client not defined');
     showModal({
       title: 'Configuration Error',
       message: 'Supabase client not loaded. Please refresh.',
@@ -23,7 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     return;
   }
+  console.log('✅ Supabase client found');
 
+  // Phone provider detection
   if (phoneInput && providerBadge) {
     phoneInput.addEventListener('input', () => {
       const digits = phoneInput.value.replace(/\D/g, '');
@@ -42,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   form.addEventListener('submit', async (e) => {
+    console.log('🔵 Form submit intercepted');
     e.preventDefault();
 
     const email = emailInput.value.trim();
@@ -78,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       if (error) throw error;
 
+      console.log('Signup initiated, storing pending data');
       sessionStorage.setItem('pending_registration', JSON.stringify({
         phone: '+211' + rawPhone,
         provider: detectProvider(rawPhone) || 'mtn',
@@ -95,4 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
       submitBtn.innerHTML = 'Sign Up <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>';
     }
   });
+
+  console.log('✅ Register event listener attached');
 });
